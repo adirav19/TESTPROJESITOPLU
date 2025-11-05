@@ -1,0 +1,93 @@
+﻿<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - TESTPROJESI</title>
+
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/TESTPROJESI.styles.css" asp-append-version="true" />
+
+    <style>
+        body {
+            background-color: #f7f8fa;
+        }
+
+        .navbar {
+            background: linear-gradient(90deg, #0d6efd, #4dabf7);
+        }
+
+            .navbar a.nav-link, .navbar-brand {
+                color: white !important;
+                font-weight: 500;
+            }
+
+                .navbar a.nav-link:hover {
+                    color: #ffe082 !important;
+                }
+
+        .card {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            border-radius: 12px;
+        }
+
+        footer {
+            background-color: #f0f0f0;
+            padding: 12px;
+            font-size: 0.9rem;
+            color: #555;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <nav class="navbar navbar-expand-lg navbar-dark">
+            <div class="container-fluid">
+                <a class="navbar-brand" asp-controller="Home" asp-action="Index">🏠 TESTPROJESI</a>
+
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMenu" aria-controls="navbarMenu" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <div class="collapse navbar-collapse" id="navbarMenu">
+                    <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                        <li class="nav-item">
+                            <a class="nav-link" asp-controller="Home" asp-action="Index">Ana Sayfa</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" asp-controller="Auth" asp-action="Index">Token Al</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" asp-controller="TestApi" asp-action="Index">Test API</a>
+                        </li>
+                    </ul>
+
+                    <span class="navbar-text text-white me-3">
+                        👤 Kullanıcı: <b>NETSIS</b>
+                    </span>
+                    <a class="btn btn-outline-light btn-sm" href="#">Çıkış</a>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <div class="container my-4">
+        <main role="main" class="pb-3">
+            @RenderBody()
+        </main>
+    </div>
+
+    <footer class="text-center border-top">
+        <div class="container">
+            &copy; 2025 - TESTPROJESI | Geliştirici: <b>Samur</b>
+        </div>
+    </footer>
+
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

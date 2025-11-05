@@ -1,0 +1,7 @@
+﻿@model ErrorViewModel
+<h2>❌ Bir hata oluştu.</h2>
+<p>Request ID: @Model.RequestId</p>
+@if (Model.ShowRequestId)
+{
+    <p>Lütfen sistem yöneticisine bu ID’yi iletin.</p>
+}

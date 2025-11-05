@@ -1,0 +1,504 @@
+﻿@{
+    ViewData["Title"] = "Test API İşlemleri";
+}
+
+<div class="container">
+    <h2 class="mb-4">🧩 Test API İşlemleri</h2>
+
+    <div class="row g-4">
+        <!-- ✅ Yeni Cari -->
+        <div class="col-md-4">
+            <div class="card border-success">
+                <div class="card-header bg-success text-white fw-bold">Yeni Cari Oluştur</div>
+                <div class="card-body">
+                    <form id="createCariForm">
+                        <input name="CARI_KOD" class="form-control mb-2" placeholder="Cari Kodu" />
+                        <input name="CARI_ISIM" class="form-control mb-2" placeholder="Cari İsmi" />
+                        <input name="CARI_TEL" class="form-control mb-2" placeholder="Telefon" />
+                        <input name="CARI_IL" class="form-control mb-2" placeholder="İl" />
+                        <input name="EMAIL" class="form-control mb-3" placeholder="E-posta" />
+                        <button type="submit" class="btn btn-success w-100 fw-bold">➕ Oluştur</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- ✏️ Güncelle -->
+        <div class="col-md-4">
+            <div class="card border-warning">
+                <div class="card-header bg-warning text-dark fw-bold">Cari Güncelle</div>
+                <div class="card-body">
+                    <form id="updateCariForm">
+                        <input id="updateKod" name="CARI_KOD" class="form-control mb-2" placeholder="Cari Kodu" />
+                        <input id="updateIsim" name="CARI_ISIM" class="form-control mb-2" placeholder="Yeni Cari İsmi" />
+                        <input id="updateTel" name="CARI_TEL" class="form-control mb-2" placeholder="Telefon" />
+                        <input id="updateIl" name="CARI_IL" class="form-control mb-2" placeholder="İl" />
+                        <input id="updateMail" name="EMAIL" class="form-control mb-3" placeholder="Email" />
+                        <button type="submit" class="btn btn-warning w-100 fw-bold">✏️ Güncelle</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- 🗑️ Sil -->
+        <div class="col-md-4">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white fw-bold">Cari Sil</div>
+                <div class="card-body">
+                    <form id="deleteCariForm" asp-controller="TestApi" asp-action="DeleteCari" method="post">
+                        <input id="deleteKod" name="CARI_KOD" class="form-control mb-3" placeholder="Cari Kodu" />
+                        <button type="submit" class="btn btn-danger w-100 fw-bold">🗑️ Sil</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- 📋 Cari Listesi -->
+        <div class="input-group mb-3">
+            <span class="input-group-text bg-light">🔍 Ara</span>
+            <input type="text" id="searchCari" class="form-control" placeholder="Cari kodu, isim veya il ile ara...">
+        </div>
+
+        <div class="card mt-5 shadow-sm">
+            <div class="card-header bg-primary text-white fw-bold">📋 Cari Listesi</div>
+            <div class="card-body">
+                <table class="table table-hover table-bordered"  id="cariTable" data-editable="true" >
+                    <thead class="table-light">
+                        <tr>
+                            <th scope="col">Cari Kod</th>
+                            <th scope="col">Cari İsim</th>
+                            <th scope="col">Telefon</th>
+                            <th scope="col">İl</th>
+                            <th scope="col">Seç</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td colspan="5" class="text-center">Yükleniyor...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <hr class="my-4" />
+
+        <!-- 🔔 Durum -->
+        @if (ViewBag.Hata != null)
+        {
+            <div class="alert alert-danger shadow-sm"><b>❌ Hata:</b> @ViewBag.Hata</div>
+        }
+        else if (ViewBag.Result != null)
+        {
+            <div class="alert alert-success shadow-sm">
+                <b>✅ Başarılı:</b>
+                <pre class="bg-light p-3 rounded mt-2" style="white-space: pre-wrap;">@ViewBag.Result</pre>
+            </div>
+        }
+        <!-- 🧩 Cari Güncelleme Modal -->
+        <div class="modal fade" id="updateModal" tabindex="-1" aria-labelledby="updateModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content shadow-lg border-0">
+                    <div class="modal-header bg-warning text-dark">
+                        <h5 class="modal-title fw-bold" id="updateModalLabel">✏️ Cari Güncelle</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="modalUpdateForm">
+                            <input name="CARI_KOD" id="modalKod" class="form-control mb-2" placeholder="Cari Kodu" readonly />
+                            <input name="CARI_ISIM" id="modalIsim" class="form-control mb-2" placeholder="Cari İsmi" />
+                            <input name="CARI_TEL" id="modalTel" class="form-control mb-2" placeholder="Telefon" />
+                            <input name="CARI_IL" id="modalIl" class="form-control mb-2" placeholder="İl" />
+                            <input name="EMAIL" id="modalMail" class="form-control mb-3" placeholder="E-posta" />
+                            <button type="submit" class="btn btn-warning w-100 fw-bold">💾 Kaydet</button>
+                        </form>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+@section Scripts {
+        <script>
+            document.addEventListener("DOMContentLoaded", async () => {
+                            // ➕ Yeni Cari Oluşturma (sayfa yenilemeden)
+            document.getElementById("createCariForm")?.addEventListener("submit", async (e) => {
+                e.preventDefault();
+
+                const form = e.target;
+                const dto = {
+                    CARI_KOD: form.querySelector("input[name='CARI_KOD']").value.trim(),
+                    CARI_ISIM: form.querySelector("input[name='CARI_ISIM']").value.trim(),
+                    CARI_TEL: form.querySelector("input[name='CARI_TEL']").value.trim(),
+                    CARI_IL: form.querySelector("input[name='CARI_IL']").value.trim(),
+                    EMAIL: form.querySelector("input[name='EMAIL']").value.trim()
+                };
+
+                if (!dto.CARI_KOD || !dto.CARI_ISIM) {
+                    alert("⚠️ Cari kodu ve ismi zorunludur!");
+                    return;
+                }
+
+                try {
+                    const response = await fetch("/TestApi/CreateCari", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(dto)
+                    });
+
+                    const result = await response.json();
+                    if (result.success) {
+                        // ✅ Yeni satırı tabloya ekle
+                        const tbody = document.querySelector("#cariTable tbody");
+                        tbody.innerHTML += `
+                            <tr data-kod="${dto.CARI_KOD}">
+                                <td>${dto.CARI_KOD}</td>
+                                <td class="cari-isim">${dto.CARI_ISIM}</td>
+                                <td class="cari-tel">${dto.CARI_TEL}</td>
+                                <td class="cari-il">${dto.CARI_IL}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary selectCari"
+                                            data-kod="${dto.CARI_KOD}"
+                                            data-isim="${dto.CARI_ISIM}"
+                                            data-tel="${dto.CARI_TEL}"
+                                            data-il="${dto.CARI_IL}">
+                                        Seç
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger deleteCari" data-kod="${dto.CARI_KOD}">
+                                        Sil
+                                    </button>
+                                </td>
+                            </tr>`;
+
+                        // 🧹 Formu temizle
+                        form.reset();
+
+                        // 🎉 Başarı mesajı
+                        const alertDiv = document.createElement("div");
+                        alertDiv.className = "alert alert-success mt-3";
+                        alertDiv.innerHTML = "✅ Yeni cari başarıyla oluşturuldu!";
+                        document.querySelector(".container").prepend(alertDiv);
+                        setTimeout(() => alertDiv.remove(), 2500);
+                    } else {
+                        alert("❌ Hata: " + result.message);
+                    }
+                } catch (err) {
+                    alert("❌ Hata: " + err.message);
+                }
+            });
+                        // ✏️ Cari Güncelleme (sayfa yenilemeden)
+            document.getElementById("updateCariForm")?.addEventListener("submit", async (e) => {
+                e.preventDefault();
+
+                const form = e.target;
+                const dto = {
+                    CARI_KOD: form.querySelector("input[name='CARI_KOD']").value.trim(),
+                    CARI_ISIM: form.querySelector("input[name='CARI_ISIM']").value.trim(),
+                    CARI_TEL: form.querySelector("input[name='CARI_TEL']").value.trim(),
+                    CARI_IL: form.querySelector("input[name='CARI_IL']").value.trim(),
+                    EMAIL: form.querySelector("input[name='EMAIL']").value.trim()
+                };
+
+                if (!dto.CARI_KOD) {
+                    alert("⚠️ Cari kodu boş olamaz!");
+                    return;
+                }
+
+                try {
+                    const response = await fetch("/TestApi/UpdateCari", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(dto)
+                    });
+
+                    const result = await response.json();
+                    if (result.success) {
+                        // ✅ Tabloyu güncelle
+                        const row = document.querySelector(`tr[data-kod='${dto.CARI_KOD}']`);
+                        if (row) {
+                            row.querySelector(".cari-isim").textContent = dto.CARI_ISIM;
+                            row.querySelector(".cari-tel").textContent = dto.CARI_TEL;
+                            row.querySelector(".cari-il").textContent = dto.CARI_IL;
+                        }
+
+                        // 🎉 Başarı mesajı
+                        const alertDiv = document.createElement("div");
+                        alertDiv.className = "alert alert-warning mt-3";
+                        alertDiv.innerHTML = "✏️ Cari başarıyla güncellendi!";
+                        document.querySelector(".container").prepend(alertDiv);
+                        setTimeout(() => alertDiv.remove(), 2500);
+
+                        // 🧹 Formu temizle
+                        form.reset();
+                    } else {
+                        alert("❌ Hata: " + result.message);
+                    }
+                } catch (err) {
+                    alert("❌ Hata: " + err.message);
+                }
+            });
+
+                const tbody = document.querySelector("#cariTable tbody");
+
+                // 🔹 Cari listesini getir
+                tbody.innerHTML = "<tr><td colspan='5' class='text-center text-muted'>Yükleniyor...</td></tr>";
+                try {
+                    const res = await fetch("/TestApi/ListCariler");
+                    const data = await res.json();
+
+                    if (Array.isArray(data)) {
+                        tbody.innerHTML = "";
+                        data.forEach(item => {
+                            const temel = item.CariTemelBilgi || {};
+                            const kod = temel.CARI_KOD ?? "";
+                            const isim = temel.CARI_ISIM ?? "";
+                            const tel = temel.CARI_TEL ?? "";
+                            const il = temel.CARI_IL ?? "";
+
+                            tbody.innerHTML += `
+                                <tr data-kod="${kod}">
+                                    <td>${kod}</td>
+                                    <td class="cari-isim">${isim}</td>
+                                    <td class="cari-tel">${tel}</td>
+                                    <td class="cari-il">${il}</td>
+                                    <td>
+                                        <button
+                                            class="btn btn-sm btn-outline-primary selectCari"
+                                            data-kod="${kod}"
+                                            data-isim="${isim}"
+                                            data-tel="${tel}"
+                                            data-il="${il}">
+                                            Seç
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger deleteCari" data-kod="${kod}">
+                                            Sil
+                                        </button>
+                                    </td>
+                                </tr>`;
+                        });
+                    } else {
+                        tbody.innerHTML = "<tr><td colspan='5' class='text-center text-danger'>Beklenmeyen veri formatı</td></tr>";
+                    }
+                } catch (e) {
+                    tbody.innerHTML = "<tr><td colspan='5' class='text-center text-danger'>Hata: " + e.message + "</td></tr>";
+                }
+
+                // 📌 Satırdaki “Seç” butonuna tıklanınca modal aç
+                document.addEventListener("click", e => {
+                    if (e.target.classList.contains("selectCari")) {
+                        const btn = e.target;
+
+                        document.querySelector("#modalKod").value = btn.dataset.kod;
+                        document.querySelector("#modalIsim").value = btn.dataset.isim;
+                        document.querySelector("#modalTel").value = btn.dataset.tel;
+                        document.querySelector("#modalIl").value = btn.dataset.il;
+                        document.querySelector("#modalMail").value = btn.dataset.kod + "mail.com";
+
+                        const modal = new bootstrap.Modal(document.getElementById("updateModal"));
+                        modal.show();
+                    }
+                });
+
+                // 💾 AJAX Güncelleme (sayfa yenilemeden)
+                document.getElementById("modalUpdateForm")?.addEventListener("submit", async e => {
+                    e.preventDefault();
+
+                    const dto = {
+                        CARI_KOD: document.querySelector("#modalKod").value,
+                        CARI_ISIM: document.querySelector("#modalIsim").value,
+                        CARI_TEL: document.querySelector("#modalTel").value,
+                        CARI_IL: document.querySelector("#modalIl").value,
+                        EMAIL: document.querySelector("#modalMail").value
+                    };
+
+                    try {
+                        const response = await fetch("/TestApi/UpdateCari", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify(dto)
+                        });
+
+                        if (response.ok) {
+                            // ✅ Tablo satırını anında güncelle
+                            const row = document.querySelector(`tr[data-kod='${dto.CARI_KOD}']`);
+                            if (row) {
+                                row.querySelector(".cari-isim").textContent = dto.CARI_ISIM;
+                                row.querySelector(".cari-tel").textContent = dto.CARI_TEL;
+                                row.querySelector(".cari-il").textContent = dto.CARI_IL;
+                            }
+
+                            // 🎉 Modal kapanır, başarı mesajı çıkar
+                            const modal = bootstrap.Modal.getInstance(document.getElementById("updateModal"));
+                            modal.hide();
+
+                            const alertDiv = document.createElement("div");
+                            alertDiv.className = "alert alert-success mt-3";
+                            alertDiv.innerHTML = "✅ Güncelleme başarılı!";
+                            document.querySelector(".container").prepend(alertDiv);
+                            setTimeout(() => alertDiv.remove(), 2000);
+                        } else {
+                            throw new Error("Sunucudan hata döndü.");
+                        }
+                    } catch (err) {
+                        alert("❌ Hata: " + err.message);
+                    }
+                });
+
+                // 🗑️ 1️⃣ Liste üzerindeki “Sil” butonu (popup)
+                document.addEventListener("click", async e => {
+                    if (e.target.classList.contains("deleteCari")) {
+                        const kod = e.target.dataset.kod;
+
+                        if (!confirm(`⚠ ${kod} kodlu cariyi silmek istediğine emin misin?`)) return;
+
+                        try {
+                            const response = await fetch("/TestApi/DeleteCari", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ cariKodu: kod })
+                            });
+
+                            if (response.ok) {
+                                const row = document.querySelector(`tr[data-kod='${kod}']`);
+                                if (row) row.remove();
+
+                                const alertDiv = document.createElement("div");
+                                alertDiv.className = "alert alert-danger mt-3";
+                                alertDiv.innerHTML = `🗑️ ${kod} kodlu cari silindi.`;
+                                document.querySelector(".container").prepend(alertDiv);
+                                setTimeout(() => alertDiv.remove(), 2000);
+                            } else {
+                                throw new Error("Sunucudan hata döndü.");
+                            }
+                        } catch (err) {
+                            alert("❌ Silme hatası: " + err.message);
+                        }
+                    }
+                });
+
+                // 🗑️ 2️⃣ Alt kısımdaki “Cari Sil” formu (manuel kodla)
+                document.getElementById("deleteCariForm")?.addEventListener("submit", async e => {
+                    e.preventDefault();
+                    const kod = document.getElementById("deleteKod").value.trim();
+
+                    if (!kod) {
+                        alert("⚠️ Cari kodu boş olamaz!");
+                        return;
+                    }
+
+                    if (!confirm(`${kod} kodlu cariyi silmek istediğine emin misin?`)) return;
+
+                    try {
+                        const response = await fetch("/TestApi/DeleteCari", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ cariKodu: kod })
+                        });
+
+                        if (response.ok) {
+                            const alertDiv = document.createElement("div");
+                            alertDiv.className = "alert alert-danger mt-3";
+                            alertDiv.innerHTML = `🗑️ ${kod} kodlu cari başarıyla silindi.`;
+                            document.querySelector(".container").prepend(alertDiv);
+                            setTimeout(() => alertDiv.remove(), 2500);
+
+                            // Eğer tabloda varsa satırı da kaldır
+                            const row = document.querySelector(`tr[data-kod='${kod}']`);
+                            if (row) row.remove();
+                        } else {
+                            throw new Error("Sunucudan hata döndü.");
+                        }
+                    } catch (err) {
+                        alert("❌ Silme hatası: " + err.message);
+                    }
+                });
+                            // ✏️  Hücreyi çift tıklamayla düzenlenebilir yap
+            document.addEventListener("dblclick", function (e) {
+                const td = e.target.closest("td");
+                if (!td || td.classList.contains("no-edit") || td.querySelector("input")) return;
+
+                const originalValue = td.textContent.trim();
+                const columnName = td.className.replace("cari-", "").trim(); // örnek: "isim", "tel" vs.
+                const row = td.closest("tr");
+                const cariKod = row.getAttribute("data-kod");
+
+                // sadece bu kolonlar düzenlenebilir
+                const editableFields = ["cari-isim", "cari-tel", "cari-il"];
+                if (!editableFields.includes(td.classList[0])) return;
+
+                // input ekle
+                const input = document.createElement("input");
+                input.type = "text";
+                input.value = originalValue;
+                input.className = "form-control form-control-sm";
+                td.innerHTML = "";
+                td.appendChild(input);
+                input.focus();
+
+                // Enter veya blur (odak kaybı) olduğunda kaydet
+                input.addEventListener("keydown", async (ev) => {
+                    if (ev.key === "Enter") {
+                        await saveInlineEdit(cariKod, columnName, input.value, td);
+                    } else if (ev.key === "Escape") {
+                        td.textContent = originalValue;
+                    }
+                });
+
+                input.addEventListener("blur", async () => {
+                    await saveInlineEdit(cariKod, columnName, input.value, td);
+                });
+            });
+                        // 💾 Inline düzenleme kaydetme
+            async function saveInlineEdit(cariKod, alan, yeniDeger, td) {
+                const row = td.closest("tr");
+                const dto = {
+                    CARI_KOD: cariKod,
+                    CARI_ISIM: row.querySelector(".cari-isim").textContent.trim(),
+                    CARI_TEL: row.querySelector(".cari-tel").textContent.trim(),
+                    CARI_IL: row.querySelector(".cari-il").textContent.trim(),
+                    EMAIL: ""
+                };
+
+                // güncellenen alanı değiştir
+                if (alan === "isim") dto.CARI_ISIM = yeniDeger;
+                if (alan === "tel") dto.CARI_TEL = yeniDeger;
+                if (alan === "il") dto.CARI_IL = yeniDeger;
+
+                try {
+                    const response = await fetch("/TestApi/UpdateCari", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(dto)
+                    });
+
+                    if (response.ok) {
+                        td.textContent = yeniDeger;
+                        td.classList.add("bg-success", "text-white");
+                        setTimeout(() => td.classList.remove("bg-success", "text-white"), 1000);
+                    } else {
+                        td.textContent = "(Hata)";
+                    }
+                } catch (err) {
+                    td.textContent = "(Hata)";
+                    console.error("Güncelleme hatası:", err);
+                }
+            }
+
+
+                // 🔎 Canlı Arama
+                document.getElementById("searchCari")?.addEventListener("keyup", function () {
+                    const searchTerm = this.value.toLowerCase();
+                    const rows = document.querySelectorAll("#cariTable tbody tr");
+                    rows.forEach(row => {
+                        const text = row.textContent.toLowerCase();
+                        row.style.display = text.includes(searchTerm) ? "" : "none";
+                    });
+                });
+            });
+        </script>
+}
+
+
+
+
+
+

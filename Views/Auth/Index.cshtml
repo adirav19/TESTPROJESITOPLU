@@ -1,0 +1,18 @@
+﻿<h2>Token Al</h2>
+<form method="post">
+    <button type="submit">Token Al</button>
+</form>
+
+@if (ViewBag.Token != null)
+{
+    <div style="color:green; margin-top:20px;">
+        <b>Token Döndü:</b>
+        <pre>@ViewBag.Token</pre>
+    </div>
+}
+@if (ViewBag.Hata != null)
+{
+    <div style="color:red; margin-top:20px;">
+        <b>Hata:</b> @ViewBag.Hata
+    </div>
+}
