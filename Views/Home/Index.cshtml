@@ -1,27 +1,36 @@
-﻿<h2>Token Al</h2>
-
-<form method="post" asp-controller="Auth" asp-action="Index">
-    <input name="username" value="NETSIS" placeholder="Kullanıcı" />
-    <input name="password" value="Cm1521*." placeholder="Şifre" />
-    <input name="branchcode" value="0" placeholder="Branch" />
-    <input name="dbname" value="DONANIMURETIM" placeholder="DB Name" />
-    <input name="dbuser" value="TEMELSET" placeholder="DB User" />
-    <input name="dbpassword" value="***" placeholder="DB Pass" />
-    <input name="dbtype" value="MSSQL" placeholder="DB Type" />
-    <button type="submit">Token Al</button>
-</form>
-
-@if (ViewBag.Token != null)
-{
-    <div style="color:green;margin-top:10px;">
-        <b>Token Döndü:</b>
-        <pre>@ViewBag.Token</pre>
-    </div>
+@{
+    ViewData["Title"] = "Ana Sayfa";
 }
 
-@if (ViewBag.Hata != null)
-{
-    <div style="color:red;margin-top:10px;">
-        <b>Hata:</b> @ViewBag.Hata
+<div class="container mt-5 text-center">
+    <h1 class="mb-4">🏠 Minimal MVC Projesi</h1>
+    
+    <div class="row justify-content-center">
+        <div class="col-md-4 mb-3">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">🧩 Cari İşlemleri</h5>
+                    <p class="card-text">Cari ekleme, güncelleme, silme</p>
+                    <a href="/Cari/Index" class="btn btn-primary">Git →</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4 mb-3">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">🏭 Üretim Fişleri</h5>
+                    <p class="card-text">Üretim fişi listeleme ve güncelleme</p>
+                    <a href="/FinishedGoods/Index" class="btn btn-success">Git →</a>
+                </div>
+            </div>
+        </div>
     </div>
-}
+    
+    <div class="mt-5 text-muted">
+        <p>✅ Sadece Controller + View</p>
+        <p>✅ Servis katmanı yok</p>
+        <p>✅ Business klasörü yok</p>
+        <p>✅ Minimal yapı</p>
+    </div>
+</div>

@@ -1,0 +1,241 @@
+@{
+    ViewData["Title"] = "Cari İşlemleri";
+}
+
+<div class="container">
+    <h2 class="mb-4">🧩 Cari İşlemleri</h2>
+
+    <div class="row g-4">
+        <!-- Yeni Cari -->
+        <div class="col-md-4">
+            <div class="card border-success">
+                <div class="card-header bg-success text-white fw-bold">Yeni Cari</div>
+                <div class="card-body">
+                    <form id="createForm">
+                        <input name="CARI_KOD" class="form-control mb-2" placeholder="Cari Kodu" required />
+                        <input name="CARI_ISIM" class="form-control mb-2" placeholder="Cari İsmi" required />
+                        <input name="CARI_TEL" class="form-control mb-2" placeholder="Telefon" />
+                        <input name="CARI_IL" class="form-control mb-2" placeholder="İl" />
+                        <input name="EMAIL" class="form-control mb-3" placeholder="E-posta" />
+                        <button type="submit" class="btn btn-success w-100">➕ Oluştur</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Güncelle -->
+        <div class="col-md-4">
+            <div class="card border-warning">
+                <div class="card-header bg-warning text-dark fw-bold">Cari Güncelle</div>
+                <div class="card-body">
+                    <form id="updateForm">
+                        <input name="CARI_KOD" class="form-control mb-2" placeholder="Cari Kodu" required />
+                        <input name="CARI_ISIM" class="form-control mb-2" placeholder="Yeni İsim" />
+                        <input name="CARI_TEL" class="form-control mb-2" placeholder="Telefon" />
+                        <input name="CARI_IL" class="form-control mb-2" placeholder="İl" />
+                        <input name="EMAIL" class="form-control mb-3" placeholder="Email" />
+                        <button type="submit" class="btn btn-warning w-100">✏️ Güncelle</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sil -->
+        <div class="col-md-4">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white fw-bold">Cari Sil</div>
+                <div class="card-body">
+                    <form id="deleteForm">
+                        <input name="cariKodu" class="form-control mb-3" placeholder="Cari Kodu" required />
+                        <button type="submit" class="btn btn-danger w-100">🗑️ Sil</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Liste -->
+    <div class="card mt-4">
+        <div class="card-header bg-primary text-white fw-bold">📋 Cari Listesi</div>
+        <div class="card-body">
+            <input type="text" id="search" class="form-control mb-3" placeholder="🔍 Ara..." />
+            <table class="table table-hover table-bordered" id="cariTable">
+                <thead class="table-light">
+                    <tr>
+                        <th>Cari Kod</th>
+                        <th>Cari İsim</th>
+                        <th>Telefon</th>
+                        <th>İl</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td colspan="4" class="text-center">Yükleniyor...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+document.addEventListener("DOMContentLoaded", async () => {
+    const tbody = document.querySelector("#cariTable tbody");
+
+    // Liste yükle
+    async function loadList() {
+        tbody.innerHTML = "<tr><td colspan='4' class='text-center'>Yükleniyor...</td></tr>";
+        try {
+            const res = await fetch("/Cari/List");
+            const data = await res.json();
+            tbody.innerHTML = "";
+            
+            if (Array.isArray(data)) {
+                data.forEach(item => {
+                    const temel = item.CariTemelBilgi || {};
+                    tbody.innerHTML += `
+                        <tr data-kod="${temel.CARI_KOD || ''}">
+                            <td>${temel.CARI_KOD || ''}</td>
+                            <td class="editable">${temel.CARI_ISIM || ''}</td>
+                            <td class="editable">${temel.CARI_TEL || ''}</td>
+                            <td class="editable">${temel.CARI_IL || ''}</td>
+                        </tr>`;
+                });
+            }
+        } catch (err) {
+            tbody.innerHTML = "<tr><td colspan='4' class='text-center text-danger'>Hata: " + err.message + "</td></tr>";
+        }
+    }
+
+    await loadList();
+
+    // Yeni cari
+    document.getElementById("createForm").addEventListener("submit", async e => {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const dto = Object.fromEntries(formData.entries());
+        
+        try {
+            const res = await fetch("/Cari/Create", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(dto)
+            });
+            
+            if (res.ok) {
+                alert("✅ Cari oluşturuldu");
+                e.target.reset();
+                await loadList();
+            } else {
+                alert("❌ Hata oluştu");
+            }
+        } catch (err) {
+            alert("❌ Hata: " + err.message);
+        }
+    });
+
+    // Güncelle
+    document.getElementById("updateForm").addEventListener("submit", async e => {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const dto = Object.fromEntries(formData.entries());
+        
+        try {
+            const res = await fetch("/Cari/Update", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(dto)
+            });
+            
+            if (res.ok) {
+                alert("✅ Cari güncellendi");
+                e.target.reset();
+                await loadList();
+            } else {
+                alert("❌ Hata oluştu");
+            }
+        } catch (err) {
+            alert("❌ Hata: " + err.message);
+        }
+    });
+
+    // Sil
+    document.getElementById("deleteForm").addEventListener("submit", async e => {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const dto = Object.fromEntries(formData.entries());
+        
+        if (!confirm(`${dto.cariKodu} kodlu cariyi silmek istiyor musunuz?`)) return;
+        
+        try {
+            const res = await fetch("/Cari/Delete", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(dto)
+            });
+            
+            if (res.ok) {
+                alert("✅ Cari silindi");
+                e.target.reset();
+                await loadList();
+            } else {
+                alert("❌ Hata oluştu");
+            }
+        } catch (err) {
+            alert("❌ Hata: " + err.message);
+        }
+    });
+
+    // Arama
+    document.getElementById("search").addEventListener("keyup", function() {
+        const term = this.value.toLowerCase();
+        document.querySelectorAll("#cariTable tbody tr").forEach(row => {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(term) ? "" : "none";
+        });
+    });
+
+    // Inline edit (double click)
+    document.addEventListener("dblclick", async e => {
+        const td = e.target.closest("td");
+        if (!td || !td.classList.contains("editable") || td.querySelector("input")) return;
+        
+        const original = td.textContent.trim();
+        const input = document.createElement("input");
+        input.value = original;
+        input.className = "form-control form-control-sm";
+        td.innerHTML = "";
+        td.appendChild(input);
+        input.focus();
+        
+        input.addEventListener("blur", async () => {
+            const newValue = input.value.trim();
+            td.textContent = newValue;
+            
+            // Satırdaki tüm bilgileri al
+            const row = td.closest("tr");
+            const cells = row.querySelectorAll("td");
+            const dto = {
+                CARI_KOD: cells[0].textContent.trim(),
+                CARI_ISIM: cells[1].textContent.trim(),
+                CARI_TEL: cells[2].textContent.trim(),
+                CARI_IL: cells[3].textContent.trim(),
+                EMAIL: ""
+            };
+            
+            try {
+                await fetch("/Cari/Update", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(dto)
+                });
+                td.style.backgroundColor = "#d4edda";
+                setTimeout(() => td.style.backgroundColor = "", 1500);
+            } catch (err) {
+                td.style.backgroundColor = "#f8d7da";
+                setTimeout(() => td.style.backgroundColor = "", 1500);
+            }
+        });
+    });
+});
+</script>
+}

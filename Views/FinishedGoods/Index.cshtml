@@ -1,15 +1,11 @@
-﻿@{
+@{
     ViewData["Title"] = "Üretim Fişleri";
 }
 
 <div class="container mt-4">
-    <h2 class="mb-4">🏭 Üretim Fişleri (Finished Goods)</h2>
+    <h2 class="mb-4">🏭 Üretim Fişleri</h2>
 
-    <div class="mb-3">
-        <button id="btnYeni" class="btn btn-success fw-bold">➕ Yeni Fiş</button>
-    </div>
-
-    <table id="finishedTable" class="table table-bordered table-hover align-middle" data-editable="true">
+    <table id="finishedTable" class="table table-bordered table-hover">
         <thead class="table-light">
             <tr>
                 <th>Fiş No</th>
@@ -22,57 +18,34 @@
             </tr>
         </thead>
         <tbody>
-            <tr><td colspan="7" class="text-center text-muted">Yükleniyor...</td></tr>
+            <tr><td colspan="7" class="text-center">Yükleniyor...</td></tr>
         </tbody>
     </table>
 </div>
 
-<!-- 🔧 Yeni Fiş Modal -->
-<div class="modal fade" id="newModal" tabindex="-1" aria-labelledby="newModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content border-success shadow">
-            <div class="modal-header bg-success text-white">
-                <h5 class="modal-title fw-bold" id="newModalLabel">➕ Yeni Üretim Fişi</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <form id="createFinishedForm">
-                    <input name="FisNo" class="form-control mb-2" placeholder="Fiş No" />
-                    <input name="Tarih" class="form-control mb-2" placeholder="Tarih (YYYY-MM-DD)" />
-                    <input name="Depo" class="form-control mb-2" placeholder="Depo Kodu" />
-                    <input name="Malzeme" class="form-control mb-2" placeholder="Malzeme Kodu" />
-                    <input name="Miktar" class="form-control mb-2" placeholder="Miktar" />
-                    <input name="Birim" class="form-control mb-3" placeholder="Birim" />
-                    <button type="submit" class="btn btn-success w-100 fw-bold">💾 Kaydet</button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
-<!-- 🔍 Detay Modal -->
-<div class="modal fade" id="detailModal" tabindex="-1" aria-labelledby="detailModalLabel" aria-hidden="true">
+<!-- Detay Modal -->
+<div class="modal fade" id="detailModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
-        <div class="modal-content border-warning shadow">
+        <div class="modal-content">
             <div class="modal-header bg-warning text-dark">
-                <h5 class="modal-title fw-bold" id="detailModalLabel">📋 Üretim Fişi Detayı</h5>
+                <h5 class="modal-title">📋 Fiş Detayı</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <div id="detailInfo" class="mb-3 border rounded p-2 bg-light small"></div>
-                <table class="table table-bordered table-striped align-middle">
+                <div id="detailInfo" class="mb-3 p-2 bg-light small"></div>
+                <table class="table table-bordered">
                     <thead class="table-warning">
                         <tr>
                             <th>#</th>
                             <th>Stok Kodu</th>
-                            <th>Depo Kodu</th>
+                            <th>Depo</th>
                             <th>Miktar</th>
                             <th>BG Tip</th>
-                            <th>Seri Var mı</th>
-                            <th>Açıklama</th>
+                            <th>Seri</th>
                         </tr>
                     </thead>
-                    <tbody id="detailTableBody" data-editable="true">
-                        <tr><td colspan="7" class="text-center text-muted">Yükleniyor...</td></tr>
+                    <tbody id="detailTableBody">
+                        <tr><td colspan="6" class="text-center">Yükleniyor...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -80,246 +53,154 @@
     </div>
 </div>
 
-
 @section Scripts {
-    <script>
-        document.addEventListener("DOMContentLoaded", async () => {
-            const tbody = document.querySelector("#finishedTable tbody");
+<script>
+document.addEventListener("DOMContentLoaded", async () => {
+    const tbody = document.querySelector("#finishedTable tbody");
 
-            // ✅ Listele
-                        async function loadList() {
-            tbody.innerHTML = "<tr><td colspan='7' class='text-center text-muted'>Yükleniyor...</td></tr>";
+    // Liste yükle
+    async function loadList() {
+        tbody.innerHTML = "<tr><td colspan='7' class='text-center'>Yükleniyor...</td></tr>";
+        try {
+            const res = await fetch("/FinishedGoods/GetAll");
+            const json = await res.json();
+            const data = json.data || [];
+            
+            tbody.innerHTML = "";
+            if (data.length === 0) {
+                tbody.innerHTML = "<tr><td colspan='7' class='text-center text-muted'>Kayıt bulunamadı</td></tr>";
+                return;
+            }
+
+            data.forEach(x => {
+                tbody.innerHTML += `
+                    <tr data-id="${x.fisNo}">
+                        <td>${x.fisNo}</td>
+                        <td>${x.tarih}</td>
+                        <td>${x.depo}</td>
+                        <td>${x.malzeme}</td>
+                        <td>${x.miktar}</td>
+                        <td>${x.birim}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-warning detail">🔍</button>
+                        </td>
+                    </tr>`;
+            });
+        } catch (err) {
+            tbody.innerHTML = "<tr><td colspan='7' class='text-center text-danger'>Hata: " + err.message + "</td></tr>";
+        }
+    }
+
+    await loadList();
+
+    // Detay modal
+    document.addEventListener("click", async e => {
+        if (e.target.classList.contains("detail")) {
+            const id = e.target.closest("tr").dataset.id;
+            const modal = new bootstrap.Modal("#detailModal");
+            modal.show();
+
+            const detailBody = document.getElementById("detailTableBody");
+            const detailInfo = document.getElementById("detailInfo");
+            detailBody.innerHTML = "<tr><td colspan='6' class='text-center'>Yükleniyor...</td></tr>";
+
             try {
-                const res = await fetch("/FinishedGoods/GetAll");
-                if (!res.ok) throw new Error("GET isteği başarısız oldu!");
+                const res = await fetch(`/FinishedGoods/Detail/${id}`);
                 const json = await res.json();
-
-                // ✅ Küçük harfli 'data' alanını çekiyoruz
-                const data = json.data || [];
-                console.log("📦 Gelen JSON:", json);
-                console.log("📊 Data içeriği:", data);
-
-                tbody.innerHTML = "";
-                if (data.length === 0) {
-                    tbody.innerHTML = "<tr><td colspan='7' class='text-center text-muted'>Kayıt bulunamadı.</td></tr>";
+                
+                if (!json.success) {
+                    detailBody.innerHTML = `<tr><td colspan='6' class='text-center text-danger'>${json.message}</td></tr>`;
                     return;
                 }
 
-                data.forEach(x => {
-                    tbody.innerHTML += `
-                        <tr data-id="${x.fisNo}">
-                            <td>${x.fisNo}</td>
-                            <td class="fg-tarih">${x.tarih}</td>
-                            <td class="fg-depo">${x.depo}</td>
-                            <td class="fg-malzeme">${x.malzeme}</td>
-                            <td class="fg-miktar">${x.miktar}</td>
-                            <td class="fg-birim">${x.birim}</td>
-                            <td>
-                                <button class="btn btn-sm btn-outline-warning edit">✏️</button>
-                                <button class="btn btn-sm btn-outline-danger delete">🗑️</button>
-                            </td>
+                const data = json.data;
+                detailInfo.innerHTML = `
+                    <strong>Fiş No:</strong> ${data.uretSon_FisNo} |
+                    <strong>Tarih:</strong> ${data.uretSon_Tarih} |
+                    <strong>Mamul:</strong> ${data.uretSon_Mamul} |
+                    <strong>Miktar:</strong> ${data.uretSon_Miktar} |
+                    <strong>Depo:</strong> ${data.uretSon_Depo}
+                `;
+
+                const kalemler = data.kalem || [];
+                if (kalemler.length === 0) {
+                    detailBody.innerHTML = "<tr><td colspan='6' class='text-center text-muted'>Kalem bulunamadı</td></tr>";
+                    return;
+                }
+
+                detailBody.innerHTML = "";
+                kalemler.forEach(k => {
+                    detailBody.innerHTML += `
+                        <tr>
+                            <td>${k.index}</td>
+                            <td>${k.stokKodu}</td>
+                            <td>${k.depoKodu}</td>
+                            <td class="editable-qty" data-stok="${k.stokKodu}">${k.miktar}</td>
+                            <td>${k.bGTIP}</td>
+                            <td>${k.seriVarMi ? "✅" : "❌"}</td>
                         </tr>`;
                 });
             } catch (err) {
-                console.error("❌ Listeleme hatası:", err);
-                tbody.innerHTML = "<tr><td colspan='7' class='text-center text-danger'>Listeleme hatası!</td></tr>";
+                detailBody.innerHTML = "<tr><td colspan='6' class='text-center text-danger'>Hata!</td></tr>";
             }
         }
+    });
 
+    // Miktar düzenle (double click)
+    document.addEventListener("dblclick", async e => {
+        const td = e.target.closest("td");
+        if (!td || !td.classList.contains("editable-qty") || td.querySelector("input")) return;
 
+        const original = td.textContent.trim();
+        const input = document.createElement("input");
+        input.type = "number";
+        input.step = "0.001";
+        input.value = original;
+        input.className = "form-control form-control-sm";
+        td.innerHTML = "";
+        td.appendChild(input);
+        input.focus();
 
-            await loadList();
+        input.addEventListener("blur", async () => {
+            const newValue = parseFloat(input.value) || 0;
+            td.textContent = newValue.toFixed(3);
 
-            // ➕ Yeni fiş butonu
-            document.querySelector("#btnYeni").addEventListener("click", () => {
-                new bootstrap.Modal("#newModal").show();
-            });
+            const tr = td.closest("tr");
+            const cells = tr.querySelectorAll("td");
+            const fisNo = document.querySelector("#detailInfo").textContent.match(/Fiş No:\s*(\d+)/)?.[1] || "";
 
-            // 🧾 Yeni fiş kaydet
-            document.querySelector("#createFinishedForm").addEventListener("submit", async e => {
-                e.preventDefault();
-                const dto = Object.fromEntries(new FormData(e.target).entries());
-                try {
-                    const res = await fetch("/FinishedGoods/Create", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify(dto)
-                    });
-                    if (res.ok) {
-                        bootstrap.Modal.getInstance(document.getElementById("newModal")).hide();
-                        await loadList();
-                    } else {
-                        alert("❌ Fiş kaydedilemedi.");
-                    }
-                } catch (err) {
-                    alert("❌ Hata: " + err.message);
-                }
-            });
+            const dto = {
+                fisNo,
+                index: parseInt(cells[0].textContent.trim()),
+                stokKodu: cells[1].textContent.trim(),
+                depoKodu: parseInt(cells[2].textContent.trim()),
+                miktar: newValue,
+                bGTIP: cells[4].textContent.trim(),
+                seriVarMi: cells[5].textContent.includes("✅"),
+                aciklama: ""
+            };
 
-            // 🗑️ Sil
-            document.addEventListener("click", async e => {
-                if (e.target.classList.contains("delete")) {
-                    const id = e.target.closest("tr").dataset.id;
-                    if (!confirm(`${id} numaralı fişi silmek istiyor musun?`)) return;
-                    await fetch(`/FinishedGoods/Delete/${id}`, { method: "DELETE" });
-                    await loadList();
-                }
-            });
-
-            // ✏️ Inline edit
-            document.addEventListener("dblclick", async e => {
-                const td = e.target.closest("td");
-                if (!td || td.querySelector("input") || td.classList.contains("no-edit")) return;
-                const row = td.closest("tr");
-                const id = row.dataset.id;
-                const original = td.textContent.trim();
-                const field = td.className.replace("fg-", "");
-                if (!["tarih", "depo", "malzeme", "miktar", "birim"].includes(field)) return;
-
-                const input = document.createElement("input");
-                input.value = original;
-                input.className = "form-control form-control-sm";
-                td.innerHTML = "";
-                td.appendChild(input);
-                input.focus();
-
-                input.addEventListener("blur", async () => {
-                    const newValue = input.value.trim();
-                    td.textContent = newValue;
-                    const dto = { FisNo: id, Field: field, Value: newValue };
-                    await fetch("/FinishedGoods/UpdateInline", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify(dto)
-                    });
+            try {
+                const res = await fetch("/FinishedGoods/UpdateQuantity", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(dto)
                 });
-            });
 
-
-
-                // 🔍 Detay Modalı (✏️ butonuna tıklama)
-        document.addEventListener("click", async e => {
-            if (e.target.classList.contains("edit")) {
-                const id = e.target.closest("tr").dataset.id;
-                const modal = new bootstrap.Modal("#detailModal");
-                modal.show();
-
-                const detailBody = document.getElementById("detailTableBody");
-                const detailInfo = document.getElementById("detailInfo");
-                detailBody.innerHTML = "<tr><td colspan='7' class='text-center text-muted'>Yükleniyor...</td></tr>";
-                detailInfo.innerHTML = "";
-
-                try {
-                    const res = await fetch(`/FinishedGoods/Detail/${id}`);
-                    const json = await res.json();
-                    if (!json.success) {
-                        detailBody.innerHTML = `<tr><td colspan='7' class='text-center text-danger'>${json.message}</td></tr>`;
-                        return;
-                    }
-
-                    const data = json.data;
-
-                    // 🧾 Üst bilgi
-                    detailInfo.innerHTML = `
-                        <strong>Fiş No:</strong> ${data.uretSon_FisNo} |
-                        <strong>Tarih:</strong> ${data.uretSon_Tarih} |
-                        <strong>Mamul:</strong> ${data.uretSon_Mamul} |
-                        <strong>Miktar:</strong> ${data.uretSon_Miktar} |
-                        <strong>Depo:</strong> ${data.uretSon_Depo}
-                    `;
-
-                    // 🧩 Kalem tablosu
-                    const kalemler = data.kalem || [];
-                    if (kalemler.length === 0) {
-                        detailBody.innerHTML = "<tr><td colspan='7' class='text-center text-muted'>Kalem bulunamadı.</td></tr>";
-                        return;
-                    }
-
-                    detailBody.innerHTML = "";
-                    kalemler.forEach(k => {
-                        detailBody.innerHTML += `
-                            <tr>
-                                <td>${k.index}</td>
-                                <td>${k.stokKodu}</td>
-                                <td>${k.depoKodu}</td>
-                                <td>${k.miktar}</td>
-                                <td>${k.bGTIP}</td>
-                                <td>${k.seriVarMi ? "✅" : "❌"}</td>
-                                <td>${k.aciklama || ""}</td>
-                            </tr>
-                        `;
-                    });
-
-                } catch (err) {
-                    console.error("❌ Detay yükleme hatası:", err);
-                    detailBody.innerHTML = "<tr><td colspan='7' class='text-center text-danger'>Detay yüklenemedi!</td></tr>";
+                const json = await res.json();
+                if (json.success) {
+                    td.style.backgroundColor = "#d4edda";
+                } else {
+                    td.style.backgroundColor = "#f8d7da";
+                    alert("❌ Güncelleme başarısız: " + (json.message || "Hata"));
                 }
+                setTimeout(() => td.style.backgroundColor = "", 1500);
+            } catch (err) {
+                td.style.backgroundColor = "#f8d7da";
+                setTimeout(() => td.style.backgroundColor = "", 1500);
             }
         });
-                // ✏️ Detay tablosunda miktar hücresini düzenleme (dblclick)
-        document.addEventListener("dblclick", async e => {
-            const td = e.target.closest("td");
-            const tr = td?.closest("tr");
-            const tableBody = document.getElementById("detailTableBody");
-
-            // sadece miktar sütunu (4. sütun)
-            if (!td || td.cellIndex !== 3) return;
-
-            const originalValue = td.textContent.trim();
-            td.innerHTML = `<input type="number" step="0.001" value="${originalValue}" class="form-control form-control-sm" />`;
-            const input = td.querySelector("input");
-            input.focus();
-
-            input.addEventListener("blur", async () => {
-                const newValue = parseFloat(input.value) || 0;
-                td.textContent = newValue.toFixed(3);
-
-                // satırdaki kalem bilgilerini yakala
-                const cells = tr.querySelectorAll("td");
-                       // 💡 aktif modalın içindeki fiş numarasını al
-        const fisNo = document.querySelector("#detailInfo").textContent.match(/Fiş No:\s*(\d+)/)?.[1] || "";
-
-        const dto = {
-            fisNo, // ✅ yeni eklendi
-            index: parseInt(cells[0].textContent.trim()),
-            stokKodu: cells[1].textContent.trim(),
-            depoKodu: parseInt(cells[2].textContent.trim()),
-            miktar: newValue,
-            bGTIP: cells[4].textContent.trim(),
-            seriVarMi: cells[5].textContent.includes("✅"),
-            aciklama: cells[6].textContent.trim()
-        };
-
-
-                console.log("📤 Güncellenecek kalem:", dto);
-
-                // backend'e gönder
-                try {
-                    const res = await fetch("/FinishedGoods/UpdateQuantity", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify(dto)
-                    });
-
-                    const json = await res.json();
-                    console.log("✅ Backend yanıtı:", json);
-
-                    if (json.success) {
-                        td.style.backgroundColor = "#d4edda"; // yeşil
-                    } else {
-                        td.style.backgroundColor = "#f8d7da"; // kırmızı
-                        alert("❌ Güncelleme başarısız: " + (json.message || "Hata"));
-                    }
-
-                    setTimeout(() => (td.style.backgroundColor = ""), 1500);
-                } catch (err) {
-                    console.error("❌ Sunucu hatası:", err);
-                    td.style.backgroundColor = "#f8d7da";
-                    setTimeout(() => (td.style.backgroundColor = ""), 1500);
-                }
-            });
-        });
-
-        });
-    </script>
+    });
+});
+</script>
 }
