@@ -1,0 +1,1507 @@
+@{
+    ViewData["Title"] = "Tam Üretim Akışı";
+    ViewData["FullWidth"] = true;
+}
+
+<style>
+    :root {
+        --border-color: #e1e4e8;
+        --bg-panel: #ffffff;
+        --bg-hover: #f6f8fa;
+        --text-primary: #24292e;
+        --text-secondary: #586069;
+        --accent-blue: #0366d6;
+        --success-green: #28a745;
+        --danger-red: #d73a49;
+    }
+
+    body {
+        background: #f6f8fa;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    }
+
+    .workflow-container {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+        padding: 12px;
+        max-width: 100%;
+        margin: 0;
+    }
+
+    /* Tablet: 2x2 Grid */
+    @@media (max-width: 1200px) {
+        .workflow-container {
+            grid-template-columns: 1fr 1fr;
+        }
+    }
+
+    /* Mobile: Tek Kolon */
+    @@media (max-width: 768px) {
+        .workflow-container {
+            grid-template-columns: 1fr;
+            gap: 16px;
+        }
+
+        .workflow-panel {
+            max-height: none;
+            min-height: 400px;
+        }
+
+        .panel-body {
+            max-height: 400px;
+        }
+    }
+
+    .workflow-panel {
+        background: var(--bg-panel);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        max-height: calc(100vh - 100px);
+    }
+
+    .panel-header {
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border-color);
+        background: var(--bg-hover);
+        font-weight: 600;
+        font-size: 14px;
+        color: var(--text-primary);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .panel-body {
+        padding: 12px;
+        overflow-y: auto;
+        flex: 1;
+    }
+
+        .panel-body::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .panel-body::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        .panel-body::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+
+    .form-group {
+        margin-bottom: 10px;
+    }
+
+    .form-label {
+        display: block;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 6px;
+    }
+
+    .form-control-custom {
+        width: 100%;
+        padding: 8px 12px;
+        font-size: 14px;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        background: var(--bg-panel);
+        transition: border-color 0.15s;
+    }
+
+        .form-control-custom:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px rgba(3, 102, 214, 0.1);
+        }
+
+    .btn-custom {
+        padding: 8px 16px;
+        font-size: 14px;
+        font-weight: 500;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+
+    .btn-success-custom {
+        background: var(--success-green);
+        color: white;
+    }
+
+        .btn-success-custom:hover {
+            background: #22863a;
+        }
+
+    .btn-primary-custom {
+        background: var(--accent-blue);
+        color: white;
+    }
+
+        .btn-primary-custom:hover {
+            background: #0256c7;
+        }
+
+    .btn-danger-custom {
+        background: var(--danger-red);
+        color: white;
+    }
+
+        .btn-danger-custom:hover {
+            background: #cb2431;
+        }
+
+    .table-custom {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+    }
+
+        .table-custom thead {
+            background: var(--bg-hover);
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .table-custom th {
+            padding: 10px 12px;
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .table-custom td {
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-primary);
+        }
+
+        .table-custom tbody tr {
+            cursor: pointer;
+            transition: background 0.1s;
+        }
+
+            .table-custom tbody tr:hover {
+                background: var(--bg-hover);
+            }
+
+            .table-custom tbody tr.selected {
+                background: #e3f2fd;
+            }
+
+    .create-form {
+        background: var(--bg-hover);
+        padding: 12px;
+        border-radius: 6px;
+        margin-bottom: 12px;
+    }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+        margin-bottom: 8px;
+    }
+
+    @@media (max-width: 480px) {
+        .form-row {
+            grid-template-columns: 1fr;
+        }
+
+        .table-custom {
+            font-size: 11px;
+        }
+
+            .table-custom th, .table-custom td {
+                padding: 6px 8px;
+            }
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 40px 20px;
+        color: var(--text-secondary);
+    }
+
+    .empty-state-icon {
+        font-size: 48px;
+        margin-bottom: 12px;
+        opacity: 0.3;
+    }
+
+    .loading {
+        text-align: center;
+        padding: 20px;
+        color: var(--text-secondary);
+    }
+
+    .badge-custom {
+        display: inline-block;
+        padding: 2px 8px;
+        font-size: 11px;
+        font-weight: 600;
+        border-radius: 12px;
+        background: var(--bg-hover);
+        color: var(--text-secondary);
+    }
+
+    .section-divider {
+        border-top: 1px solid var(--border-color);
+        margin: 12px 0;
+        padding-top: 12px;
+    }
+
+    .section-title {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-secondary);
+        margin-bottom: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .step-indicator {
+        display: inline-block;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: var(--accent-blue);
+        color: white;
+        text-align: center;
+        line-height: 24px;
+        font-size: 12px;
+        font-weight: 600;
+        margin-right: 8px;
+    }
+</style>
+
+<div class="workflow-container">
+
+    <!-- ========================================
+         1️⃣  MÜŞTERİ SİPARİŞİ
+    ========================================= -->
+    <div class="workflow-panel">
+        <div class="panel-header">
+            <span>📋 Müşteri Siparişi</span>
+            <span class="step-indicator">1</span>
+        </div>
+        <div class="panel-body">
+
+            <div class="create-form" style="max-height:400px; overflow-y:auto;">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Seri *</label>
+                        <input id="siparis_Seri" class="form-control-custom" placeholder="S" value="S" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Fiş No *</label>
+                        <input id="siparis_FisNo" class="form-control-custom" placeholder="000000000000123" />
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Cari Kodu *</label>
+                    <input id="siparis_CariKod" class="form-control-custom" placeholder="Cari kodu" />
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Tarih *</label>
+                        <input id="siparis_Tarih" type="date" class="form-control-custom" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Teslim Tarihi *</label>
+                        <input id="siparis_TesTarih" type="date" class="form-control-custom" />
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Şube Kodu</label>
+                        <input id="siparis_SubeKodu" class="form-control-custom" value="0" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Özel Kod</label>
+                        <input id="siparis_OzelKod" class="form-control-custom" value="1" readonly />
+                    </div>
+                </div>
+
+                <div class="section-title" style="margin-top:12px;">KALEMLER</div>
+                <table class="table-custom" id="siparis_KalemTable" style="font-size:11px; margin-bottom:8px;">
+                    <thead>
+                        <tr>
+                            <th>Stok Kodu *</th>
+                            <th>Depo</th>
+                            <th>Miktar *</th>
+                            <th>Fiyat</th>
+                            <th style="width:30px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><input class="form-control-custom siparis_stokKodu" placeholder="Stok" style="font-size:11px; padding:4px;" /></td>
+                            <td><input class="form-control-custom siparis_depoKodu" value="10" style="font-size:11px; padding:4px;" /></td>
+                            <td><input class="form-control-custom siparis_miktar" value="1" style="font-size:11px; padding:4px;" /></td>
+                            <td><input class="form-control-custom siparis_bf" value="0" style="font-size:11px; padding:4px;" /></td>
+                            <td class="text-center">
+                                <button type="button" class="btn-custom btn-danger-custom siparis_btnRemoveLine" style="padding:2px 6px; font-size:11px;">X</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <button type="button" class="btn-custom btn-primary-custom" id="siparis_btnAddLine" style="width:100%; margin-bottom:8px; padding:6px; font-size:12px;">
+                    + Kalem Ekle
+                </button>
+
+                <button onclick="createCustomerOrder()" class="btn-custom btn-success-custom" style="width:100%; margin-top:8px;">
+                    ✓ Sipariş Oluştur
+                </button>
+            </div>
+
+            <div class="section-divider"></div>
+
+            <div class="section-title">MEVCUT SİPARİŞLER</div>
+            <div id="customerOrdersContainer">
+                <div class="loading">Yükleniyor...</div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ========================================
+         2️⃣  İŞ EMRİ
+    ========================================= -->
+    <div class="workflow-panel">
+        <div class="panel-header">
+            <span>🔧 İş Emri</span>
+            <span class="step-indicator">2</span>
+        </div>
+        <div class="panel-body">
+
+            <div class="create-form">
+                <div class="form-group">
+                    <label class="form-label">İş Emri No</label>
+                    <input id="isemri_IsEmriNo" class="form-control-custom" placeholder="000000000000010" />
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Tarih</label>
+                        <input id="isemri_Tarih" type="date" class="form-control-custom" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Stok Kodu</label>
+                        <input id="isemri_StokKodu" class="form-control-custom" placeholder="DK1016" />
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Miktar</label>
+                        <input id="isemri_Miktar" type="number" step="0.01" class="form-control-custom" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Teslim Tarihi</label>
+                        <input id="isemri_TeslimTarihi" type="date" class="form-control-custom" />
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Depo Kodu</label>
+                        <input id="isemri_DepoKodu" type="number" class="form-control-custom" value="4000" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Çıkış Depo</label>
+                        <input id="isemri_CikisDepoKodu" type="number" class="form-control-custom" value="4000" />
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Sipariş No (Opsiyonel)</label>
+                    <input id="isemri_SiparisNo" class="form-control-custom" placeholder="Boş bırakılabilir" />
+                </div>
+
+                <button onclick="createProductionOrder()" class="btn-custom btn-primary-custom" style="width:100%; margin-top:8px;">
+                    ✓ İş Emri Oluştur
+                </button>
+            </div>
+
+            <div class="section-divider"></div>
+
+            <div class="section-title">MEVCUT İŞ EMİRLERİ</div>
+            <div id="productionOrdersContainer">
+                <div class="loading">Yükleniyor...</div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ========================================
+         3️⃣  ÜRETİM SONU KAYDI
+    ========================================= -->
+    <div class="workflow-panel">
+        <div class="panel-header">
+            <span>🏭 Üretim Sonu Kaydı</span>
+            <span class="step-indicator">3</span>
+        </div>
+        <div class="panel-body">
+
+            <div id="productionReceiptContent">
+                <div class="empty-state">
+                    <div class="empty-state-icon">📦</div>
+                    <div>Sol panelden bir iş emri seçin</div>
+                    <div style="font-size: 12px; color: var(--text-secondary); margin-top: 8px;">
+                        Seçilen iş emri için üretim kaydı oluşturulacak
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ========================================
+         4️⃣  ÜRETİM FİŞLERİ
+    ========================================= -->
+    <div class="workflow-panel">
+        <div class="panel-header">
+            <span>📊 Üretim Fişleri</span>
+            <span class="step-indicator">4</span>
+        </div>
+        <div class="panel-body">
+
+            <div id="finishedGoodsContainer">
+                <div class="loading">Yükleniyor...</div>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+@section Scripts {
+    <script>
+        let selectedCustomerOrderNo = null;
+        let selectedProductionOrderNo = null;
+
+        // ========================================
+        //  SAYFA YÜKLENDİĞİNDE
+        // ========================================
+        document.addEventListener("DOMContentLoaded", async function () {
+            console.log("🚀 Sayfa yüklendi - FullProductionWorkflow");
+
+            // Bugünün tarihini otomatik doldur
+            let today = new Date().toISOString().split('T')[0];
+            document.getElementById("siparis_Tarih").value = today;
+            document.getElementById("siparis_TesTarih").value = today;
+            document.getElementById("isemri_Tarih").value = today;
+            document.getElementById("isemri_TeslimTarihi").value = today;
+
+            console.log("📅 Tarihler otomatik dolduruldu:", today);
+
+            // Kalem tablosu event handler'ları
+            attachSiparisKalemHandlers();
+
+            await loadCustomerOrders();
+            await loadProductionOrders();
+            await loadFinishedGoods();
+        });
+
+        // ========================================
+        //  SİPARİŞ KALEM SATIRLARI YÖNETİMİ
+        // ========================================
+        document.getElementById("siparis_btnAddLine").addEventListener("click", function () {
+            console.log("➕ Yeni kalem satırı ekleniyor");
+            let tbody = document.querySelector("#siparis_KalemTable tbody");
+            let tr = document.createElement("tr");
+            tr.innerHTML = `
+                <td><input class="form-control-custom siparis_stokKodu" placeholder="Stok" style="font-size:11px; padding:4px;" /></td>
+                <td><input class="form-control-custom siparis_depoKodu" value="10" style="font-size:11px; padding:4px;" /></td>
+                <td><input class="form-control-custom siparis_miktar" value="1" style="font-size:11px; padding:4px;" /></td>
+                <td><input class="form-control-custom siparis_bf" value="0" style="font-size:11px; padding:4px;" /></td>
+                <td class="text-center">
+                    <button type="button" class="btn-custom btn-danger-custom siparis_btnRemoveLine" style="padding:2px 6px; font-size:11px;">X</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+            attachSiparisKalemHandlers();
+        });
+
+        function attachSiparisKalemHandlers() {
+            document.querySelectorAll(".siparis_btnRemoveLine").forEach(btn => {
+                btn.onclick = function () {
+                    let tbody = document.querySelector("#siparis_KalemTable tbody");
+                    if (tbody.querySelectorAll("tr").length > 1) {
+                        console.log("🗑️ Kalem satırı siliniyor");
+                        let tr = this.closest("tr");
+                        tr.parentNode.removeChild(tr);
+                    } else {
+                        alert("En az bir kalem satırı olmalıdır.");
+                        console.warn("⚠️ Son satır silinemez");
+                    }
+                };
+            });
+        }
+
+        // ========================================
+        //  1️⃣  MÜŞTERİ SİPARİŞLERİNİ YÜK
+        // ========================================
+        async function loadCustomerOrders() {
+            console.log("📋 Müşteri siparişleri yükleniyor...");
+            try {
+                const response = await fetch('/MusteriSiparisi/List?pageSize=100');
+                console.log("📋 Response status:", response.status);
+
+                const html = await response.text();
+                console.log("📋 HTML response alındı, parse ediliyor...");
+
+                // HTML'den JSON data çekme (ViewBag'den)
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const table = doc.querySelector('table');
+
+                const container = document.getElementById('customerOrdersContainer');
+
+                if (!table) {
+                    console.warn("⚠️ Sipariş tablosu bulunamadı");
+                    container.innerHTML = '<div class="empty-state">Sipariş bulunamadı</div>';
+                    return;
+                }
+
+                const rows = table.querySelectorAll('tbody tr');
+                console.log("📋 Toplam sipariş sayısı:", rows.length);
+
+                if (rows.length === 0) {
+                    container.innerHTML = '<div class="empty-state">Sipariş bulunamadı</div>';
+                    return;
+                }
+
+                let html_output = '<div style="display:flex; flex-direction:column; gap:8px;">';
+
+                rows.forEach((row, idx) => {
+                    const cells = row.querySelectorAll('td');
+                    if (cells.length >= 3) {
+                        const fisNo = cells[0].textContent.trim();
+                        const cariKod = cells[1].textContent.trim();
+                        const tarih = cells[2].textContent.trim();
+
+                        console.log(`📋 Sipariş ${idx + 1}: ${fisNo} - ${cariKod}`);
+
+                        // Sipariş başlığı (tıklanabilir)
+                        html_output += `
+                            <div style="border:1px solid var(--border-color); border-radius:6px; overflow:hidden;">
+                                <div onclick="toggleOrderKalems('${fisNo}')"
+                                     style="padding:10px 12px; background:var(--bg-hover); cursor:pointer; display:flex; justify-content:space-between; align-items:center;"
+                                     onmouseover="this.style.background='#e6e9ed'"
+                                     onmouseout="this.style.background='var(--bg-hover)'">
+                                    <div style="display:flex; gap:12px; align-items:center;">
+                                        <span id="arrow-${fisNo}" style="font-size:14px;">▶</span>
+                                        <strong>${fisNo}</strong>
+                                        <span style="color:var(--text-secondary);">${cariKod}</span>
+                                        <span style="color:var(--text-secondary); font-size:12px;">${tarih}</span>
+                                    </div>
+                                    <span id="kalem-count-${fisNo}" style="background:#e3f2fd; color:#0366d6; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:600;">
+                                        ...
+                                    </span>
+                                </div>
+
+                                <div id="kalems-${fisNo}" style="display:none; padding:0;">
+                                    <div class="loading" style="padding:20px;">Kalemler yükleniyor...</div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                });
+
+                html_output += '</div>';
+                container.innerHTML = html_output;
+
+                console.log("✅ Müşteri siparişleri yüklendi");
+
+            } catch (err) {
+                console.error("❌ loadCustomerOrders ERROR:", err);
+                document.getElementById('customerOrdersContainer').innerHTML =
+                    '<div class="empty-state">Hata: ' + err.message + '</div>';
+            }
+        }
+
+        // ========================================
+        //  SİPARİŞ KALEMLERİNİ AÇ/KAPA
+        // ========================================
+        async function toggleOrderKalems(fisNo) {
+            console.log("🔄 Sipariş kalemleri toggle:", fisNo);
+
+            const kalemsDiv = document.getElementById(`kalems-${fisNo}`);
+            const arrow = document.getElementById(`arrow-${fisNo}`);
+
+            // Kapalıysa aç ve kalemleri yükle
+            if (kalemsDiv.style.display === 'none') {
+                console.log("📂 Kalemler açılıyor ve yükleniyor...");
+                kalemsDiv.style.display = 'block';
+                arrow.textContent = '▼';
+
+                // Kalemleri yükle
+                await loadOrderKalems(fisNo);
+            } else {
+                console.log("📁 Kalemler kapatılıyor");
+                kalemsDiv.style.display = 'none';
+                arrow.textContent = '▶';
+            }
+        }
+
+        // ========================================
+        //  SİPARİŞ KALEMLERİNİ YÜKLE
+        // ========================================
+        async function loadOrderKalems(fisNo) {
+            console.log("📥 Sipariş detayı getiriliyor:", `/MusteriSiparisi/GetFull?fisNo=${fisNo}`);
+
+            const kalemsDiv = document.getElementById(`kalems-${fisNo}`);
+            const kalemCountBadge = document.getElementById(`kalem-count-${fisNo}`);
+
+            try {
+                const response = await fetch(`/MusteriSiparisi/GetFull?fisNo=${fisNo}`);
+                console.log("📥 Response status:", response.status);
+
+                const result = await response.json();
+                console.log("📥 API Response:", result);
+
+                if (!result.IsSuccessful) {
+                    console.error("❌ Sipariş detayı başarısız:", result.ErrorDesc);
+                    kalemsDiv.innerHTML = '<div style="padding:12px; color:var(--danger-red);">Kalemler yüklenemedi</div>';
+                    return;
+                }
+
+                const data = result.Data;
+                console.log("📦 Data:", data);
+                console.log("📦 FatUst:", data.FatUst);
+                console.log("📦 Kalems:", data.Kalems);
+
+                const kalemler = data.Kalems || [];
+                console.log("📦 Kalem sayısı:", kalemler.length);
+
+                // Badge'i güncelle
+                kalemCountBadge.textContent = `${kalemler.length} Kalem`;
+
+                if (kalemler.length === 0) {
+                    console.warn("⚠️ Siparişte kalem yok");
+                    kalemsDiv.innerHTML = '<div style="padding:12px; color:var(--text-secondary); text-align:center;">Kalem bulunamadı</div>';
+                    return;
+                }
+
+                // Kalemler tablosunu oluştur
+                let html = `
+                    <table class="table-custom" style="margin:0; font-size:11px;">
+                        <thead>
+                            <tr style="background:#f0f0f0;">
+                                <th style="padding:6px 12px;">Stok Kodu</th>
+                                <th style="padding:6px 12px;">Depo</th>
+                                <th style="padding:6px 12px;">Miktar</th>
+                                <th style="padding:6px 12px;">Fiyat</th>
+                                <th style="padding:6px 12px; width:120px;"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                kalemler.forEach((kalem, kidx) => {
+                    const stokKodu = kalem.StokKodu || kalem.stokKodu || '-';
+                    const depoKodu = kalem.DEPO_KODU || kalem.depo_KODU || kalem.DepoKodu || kalem.depoKodu || '-';
+                    const miktar = kalem.STra_GCMIK || kalem.stra_GCMIK || kalem.Miktar || kalem.miktar || 0;
+                    const fiyat = kalem.STra_BF || kalem.stra_BF || kalem.Fiyat || kalem.fiyat || 0;
+
+                    console.log(`  📦 Kalem ${kidx + 1}: ${stokKodu} | Miktar: ${miktar}`);
+
+                    const tesTarih = data.FatUst?.Tes_Tarih || data.FatUst?.tes_Tarih || '';
+
+                    const kalemData = JSON.stringify({
+                        fisNo: fisNo,
+                        stokKodu: stokKodu,
+                        miktar: miktar,
+                        depoKodu: depoKodu,
+                        tesTarih: tesTarih
+                    }).replace(/"/g, '&quot;');
+
+                    html += `
+                        <tr style="background:white;">
+                            <td style="padding:6px 12px;"><strong>${stokKodu}</strong></td>
+                            <td style="padding:6px 12px;">${depoKodu}</td>
+                            <td style="padding:6px 12px;">${miktar}</td>
+                            <td style="padding:6px 12px;">${fiyat}</td>
+                            <td style="padding:6px 12px; text-align:right;">
+                                <button onclick='selectKalem(${kalemData})'
+                                        class="btn-custom btn-primary-custom"
+                                        style="padding:4px 12px; font-size:11px;">
+                                    → İş Emrine Aktar
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                html += '</tbody></table>';
+                kalemsDiv.innerHTML = html;
+
+                console.log("✅ Kalemler yüklendi");
+
+            } catch (err) {
+                console.error('❌ loadOrderKalems ERROR:', err);
+                kalemsDiv.innerHTML = '<div style="padding:12px; color:var(--danger-red);">Hata: ' + err.message + '</div>';
+            }
+        }
+
+        // ========================================
+        //  KALEM SEÇİLDİ - İŞ EMRİNE AKTAR
+        // ========================================
+        function selectKalem(kalemData) {
+            console.log("🎯 Kalem seçildi:", kalemData);
+
+            const { fisNo, stokKodu, miktar, depoKodu, tesTarih } = kalemData;
+
+            console.log("✏️ İş emri formuna aktarılıyor:");
+            console.log("  - Sipariş No:", fisNo);
+            console.log("  - Stok Kodu:", stokKodu);
+            console.log("  - Miktar:", miktar);
+            console.log("  - Depo:", depoKodu);
+            console.log("  - Teslim Tarihi:", tesTarih);
+
+            // İş emri formunu doldur
+            document.getElementById('isemri_StokKodu').value = stokKodu;
+            document.getElementById('isemri_Miktar').value = miktar;
+            document.getElementById('isemri_SiparisNo').value = fisNo;
+
+            // Teslim tarihini aktar
+            if (tesTarih && tesTarih !== '') {
+                try {
+                    let formatted = new Date(tesTarih).toISOString().split('T')[0];
+                    console.log("📅 Teslim tarihi aktarılıyor:", formatted);
+                    document.getElementById('isemri_TeslimTarihi').value = formatted;
+                } catch (e) {
+                    console.warn("⚠️ Tarih formatı hatası:", e);
+                }
+            }
+
+            console.log("✅ Kalem bilgileri iş emri formuna aktarıldı");
+            alert(`✅ ${stokKodu} kalemi iş emri formuna aktarıldı!`);
+        }
+
+        // ========================================
+        //  MÜŞTERİ SİPARİŞİ OLUŞTUR
+        // ========================================
+        async function createCustomerOrder() {
+            console.log("📝 Müşteri siparişi oluşturuluyor...");
+
+            const seri = document.getElementById("siparis_Seri").value.trim();
+            const fisNo = document.getElementById("siparis_FisNo").value.trim();
+            const cariKod = document.getElementById("siparis_CariKod").value.trim();
+            const tarih = document.getElementById("siparis_Tarih").value.trim();
+            const tesTarih = document.getElementById("siparis_TesTarih").value.trim();
+            const subeKodu = document.getElementById("siparis_SubeKodu").value.trim();
+            const ozelKod = document.getElementById("siparis_OzelKod").value.trim();
+
+            console.log("📝 Form verileri:", { seri, fisNo, cariKod, tarih, tesTarih, subeKodu, ozelKod });
+
+            // Zorunlu alan kontrolleri
+            if (!seri || !fisNo || !cariKod || !tarih || !tesTarih) {
+                console.warn("⚠️ Zorunlu alanlar eksik");
+                alert("⚠️ Zorunlu alanları doldurun!");
+                return;
+            }
+
+            // Tarihleri API formatına çevir (YYYY-MM-DD HH:MM:SS)
+            let tarihFormatted = tarih + " 00:00:00";
+            let tesTarihFormatted = tesTarih + " 00:00:00";
+
+            console.log("📅 Formatlanmış tarihler:", tarihFormatted, tesTarihFormatted);
+
+            let kalems = [];
+            document.querySelectorAll("#siparis_KalemTable tbody tr").forEach((tr, idx) => {
+                let stokKodu = tr.querySelector(".siparis_stokKodu").value.trim();
+                let depoKodu = tr.querySelector(".siparis_depoKodu").value.trim();
+                let miktar = tr.querySelector(".siparis_miktar").value.trim();
+                let bf = tr.querySelector(".siparis_bf").value.trim();
+
+                console.log(`📦 Kalem ${idx + 1}:`, { stokKodu, depoKodu, miktar, bf });
+
+                if (!stokKodu) {
+                    console.warn(`⚠️ Kalem ${idx + 1} stok kodu boş, atlanıyor`);
+                    return;
+                }
+
+                kalems.push({
+                    StokKodu: stokKodu,
+                    DEPO_KODU: depoKodu ? parseInt(depoKodu) : 10,
+                    STra_GCMIK: miktar ? parseFloat(miktar.replace(",", ".")) : 0,
+                    STra_BF: bf ? parseFloat(bf.replace(",", ".")) : 0
+                });
+            });
+
+            console.log("📦 Toplam kalem sayısı:", kalems.length);
+
+            if (kalems.length === 0) {
+                console.warn("⚠️ Hiç kalem girilmedi");
+                alert("En az bir stok kalemi girmeniz gerekiyor.");
+                return;
+            }
+
+            let payload = {
+                FaturaTip: 7,
+                Seri: seri,
+                SonNumaraYazilsin: false,
+                FatUst: {
+                    FATIRS_NO: fisNo,
+                    CariKod: cariKod,
+                    Tarih: tarihFormatted,
+                    Tes_Tarih: tesTarihFormatted,
+                    Sube_Kodu: subeKodu ? parseInt(subeKodu) : 0,
+                    OZEL_KOD: ozelKod || "1",
+                    KDV_DAHILMI: true,
+                    Tip: 7,
+                    TIPI: 7,
+                    AMBHARTUR: 0
+                },
+                Kalems: kalems
+            };
+
+            console.log("📤 Gönderilen payload:", JSON.stringify(payload, null, 2));
+
+            try {
+                const response = await fetch('/MusteriSiparisi/Create', {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+
+                console.log("📤 Response status:", response.status);
+
+                const result = await response.json();
+                console.log("📥 API Response:", result);
+
+                if (result.IsSuccessful === true) {
+                    console.log("✅ Sipariş başarıyla oluşturuldu:", fisNo);
+                    alert("✅ Sipariş başarıyla oluşturuldu! Fiş No: " + fisNo);
+
+                    // Formu temizle
+                    document.getElementById("siparis_FisNo").value = '';
+                    document.getElementById("siparis_CariKod").value = '';
+
+                    // Listeyi yenile
+                    await loadCustomerOrders();
+
+                } else {
+                    console.error("❌ Sipariş oluşturulamadı:", result.ErrorDesc);
+                    alert("❌ Kayıt başarısız: " + (result.ErrorDesc || "Bilinmeyen hata"));
+                }
+
+            } catch (err) {
+                console.error("❌ createCustomerOrder ERROR:", err);
+                alert("Hata oluştu: " + err);
+            }
+        }
+
+        // ========================================
+        //  2️⃣  İŞ EMİRLERİNİ YÜK
+        // ========================================
+        async function loadProductionOrders() {
+            console.log("🔧 İş emirleri yükleniyor...");
+            try {
+                const response = await fetch('/FullProductionWorkflow/GetProductionOrders');
+                console.log("🔧 Response status:", response.status);
+
+                const result = await response.json();
+                console.log("🔧 API Response:", result);
+
+                const container = document.getElementById('productionOrdersContainer');
+
+                if (!result.success || !result.data || result.data.length === 0) {
+                    console.warn("⚠️ İş emri bulunamadı");
+                    container.innerHTML = '<div class="empty-state">İş emri bulunamadı</div>';
+                    return;
+                }
+
+                const data = result.data;
+                console.log("🔧 Toplam iş emri sayısı:", data.length);
+
+                let html = `
+                    <table class="table-custom">
+                        <thead>
+                            <tr>
+                                <th>İş Emri No</th>
+                                <th>Stok</th>
+                                <th>Miktar</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                data.forEach((item, idx) => {
+                    let isEmriNo = item.IsEmriNo || item.isEmriNo;
+                    let stok = item.StokKodu || item.stokKodu;
+                    let miktar = item.Miktar || item.miktar;
+
+                    console.log(`🔧 İş emri ${idx + 1}:`, isEmriNo, stok, miktar);
+
+                    html += `
+                        <tr onclick="selectProductionOrder('${isEmriNo}')" data-isemrino="${isEmriNo}">
+                            <td><strong>${isEmriNo}</strong></td>
+                            <td>${stok}</td>
+                            <td>${miktar}</td>
+                        </tr>
+                    `;
+                });
+
+                html += '</tbody></table>';
+                container.innerHTML = html;
+
+                console.log("✅ İş emirleri yüklendi");
+
+            } catch (err) {
+                console.error("❌ loadProductionOrders ERROR:", err);
+                document.getElementById('productionOrdersContainer').innerHTML =
+                    '<div class="empty-state">Hata: ' + err.message + '</div>';
+            }
+        }
+
+        // ========================================
+        //  2️⃣  İŞ EMRİ SEÇİLDİ
+        // ========================================
+        async function selectProductionOrder(isEmriNo) {
+            console.log("🎯 İş emri seçildi:", isEmriNo);
+            selectedProductionOrderNo = isEmriNo;
+
+            // Seçili satırı işaretle
+            document.querySelectorAll('#productionOrdersContainer tr').forEach(tr => tr.classList.remove('selected'));
+            event.target.closest('tr').classList.add('selected');
+
+            const receiptPanel = document.getElementById('productionReceiptContent');
+            receiptPanel.innerHTML = '<div class="loading">Yükleniyor...</div>';
+
+            console.log("📥 Üretim kaydı verisi getiriliyor:", `/FinishedGoodsReceiptWChanges/GetFromProductionOrderJson?isEmriNo=${isEmriNo}`);
+
+            try {
+                const response = await fetch(`/FinishedGoodsReceiptWChanges/GetFromProductionOrderJson?isEmriNo=${isEmriNo}`);
+                console.log("📥 Response status:", response.status);
+
+                const result = await response.json();
+                console.log("📦 API Response:", result);
+
+                if (!result.IsSuccessful) {
+                    console.error("❌ İş emrinden veri alınamadı:", result.ErrorDesc);
+                    receiptPanel.innerHTML = '<div class="empty-state">❌ İş emrinden veri alınamadı</div>';
+                    return;
+                }
+
+                const data = result.Data;
+                console.log("📦 Data:", data);
+                console.log("📦 UretSon_Mamul:", data.UretSon_Mamul);
+                console.log("📦 UretSon_Miktar:", data.UretSon_Miktar);
+
+                // Form HTML'i oluştur
+                let html = `
+                    <div style="padding: 12px;">
+                        <h5 style="margin-bottom: 16px; color: var(--text-primary);">İş Emrinden Üretim Kaydı</h5>
+
+                        <div class="form-group">
+                            <label class="form-label">Fiş No</label>
+                            <input id="usk_FisNo" class="form-control-custom" value="${data.UretSon_FisNo || ''}" readonly />
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Tarih</label>
+                                <input id="usk_Tarih" type="date" class="form-control-custom"
+                                       value="${formatDate(data.UretSon_Tarih)}" />
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">İş Emri No</label>
+                                <input id="usk_SipNo" class="form-control-custom" value="${data.UretSon_SipNo || ''}" readonly />
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Mamul Kodu</label>
+                                <input id="usk_Mamul" class="form-control-custom" value="${data.UretSon_Mamul || ''}" />
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Miktar</label>
+                                <input id="usk_Miktar" type="number" step="0.01" class="form-control-custom"
+                                       value="${data.UretSon_Miktar || 0}" />
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Depo</label>
+                                <input id="usk_Depo" type="number" class="form-control-custom"
+                                       value="${data.UretSon_Depo || 0}" />
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Çıkış Depo</label>
+                                <input id="usk_CikisDepo" type="number" class="form-control-custom"
+                                       value="${data.Cikis_Depo || 0}" />
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Açıklama</label>
+                            <input id="usk_Aciklama" class="form-control-custom" value="${data.Aciklama || ''}" />
+                        </div>
+
+                        <button onclick="produceReceiptFromPanel()" class="btn-custom btn-success-custom"
+                                style="width:100%; margin-top:12px;">
+                            ✓ Üretim Fişi Oluştur
+                        </button>
+
+                        <div id="usk_kalemler" style="margin-top: 16px; display: none;">
+                            <div class="section-title">KALEMLER</div>
+                            <table class="table-custom" style="font-size: 12px;">
+                                <thead>
+                                    <tr>
+                                        <th>Stok</th>
+                                        <th>Depo</th>
+                                        <th>Miktar</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="usk_kalemler_tbody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+
+                receiptPanel.innerHTML = html;
+
+                // Full data'yı sakla (Produce için)
+                window.currentUskData = data;
+                console.log("✅ Üretim kaydı formu hazırlandı");
+
+            } catch (err) {
+                console.error("❌ selectProductionOrder ERROR:", err);
+                receiptPanel.innerHTML = '<div class="empty-state">❌ Hata oluştu</div>';
+            }
+        }
+
+        // ========================================
+        //  TARİH FORMATLA (GG.AA.YYYY → YYYY-MM-DD)
+        // ========================================
+        function formatDate(dateValue) {
+            if (!dateValue) return '';
+
+            try {
+                // Eğer string ise ve "2025-11-26" formatındaysa direkt kullan
+                if (typeof dateValue === 'string' && dateValue.includes('-')) {
+                    return dateValue.split('T')[0];
+                }
+
+                // Eğer "26.11.2025" formatındaysa yyyy-mm-dd'ye çevir
+                if (typeof dateValue === 'string' && dateValue.includes('.')) {
+                    let parts = dateValue.split('.');
+                    return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+                }
+
+                // Eğer date object ise
+                let d = new Date(dateValue);
+                let year = d.getFullYear();
+                let month = String(d.getMonth() + 1).padStart(2, '0');
+                let day = String(d.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            } catch {
+                return '';
+            }
+        }
+
+        // ========================================
+        //  3️⃣  PANELDEKİ FORMDAN FİŞ ÜRET
+        // ========================================
+        async function produceReceiptFromPanel() {
+            console.log("🏭 Üretim fişi oluşturuluyor...");
+
+            try {
+                if (!window.currentUskData) {
+                    console.error("❌ currentUskData bulunamadı");
+                    alert("❌ Veri bulunamadı!");
+                    return;
+                }
+
+                const payload = {
+                    ...window.currentUskData,
+                    UretSon_Tarih: document.getElementById("usk_Tarih").value,
+                    UretSon_Mamul: document.getElementById("usk_Mamul").value,
+                    UretSon_Miktar: parseFloat(document.getElementById("usk_Miktar").value || 0),
+                    UretSon_Depo: parseInt(document.getElementById("usk_Depo").value || 0),
+                    Cikis_Depo: parseInt(document.getElementById("usk_CikisDepo").value || 0),
+                    Aciklama: document.getElementById("usk_Aciklama").value
+                };
+
+                console.log("📤 Gönderilen payload:", JSON.stringify(payload, null, 2));
+
+                const response = await fetch('/FinishedGoodsReceiptWChanges/Produce', {
+                    method: 'POST',
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+
+                console.log("📤 Response status:", response.status);
+
+                const result = await response.json();
+                console.log("📥 API Response:", result);
+
+                if (result.IsSuccessful !== true) {
+                    console.error("❌ Üretim fişi oluşturulamadı:", result.ErrorDesc);
+                    alert("❌ Hata: " + (result.ErrorDesc || "Bilinmeyen hata"));
+                    return;
+                }
+
+                console.log("✅ Üretim fişi başarıyla oluşturuldu");
+                alert("✅ Üretim fişi başarıyla oluşturuldu!");
+
+                // Kalemleri göster
+                if (result.Data && result.Data.Kalem) {
+                    console.log("📦 Kalemler gösteriliyor:", result.Data.Kalem.length);
+                    const tbody = document.getElementById('usk_kalemler_tbody');
+                    tbody.innerHTML = '';
+
+                    result.Data.Kalem.forEach((k, idx) => {
+                        console.log(`📦 Kalem ${idx + 1}:`, k.StokKodu, k.DepoKodu, k.Miktar);
+                        tbody.innerHTML += `
+                            <tr>
+                                <td>${k.StokKodu}</td>
+                                <td>${k.DepoKodu}</td>
+                                <td>${k.Miktar}</td>
+                            </tr>
+                        `;
+                    });
+
+                    document.getElementById('usk_kalemler').style.display = 'block';
+                }
+
+                // Üretim fişleri listesini yenile
+                await loadFinishedGoods();
+
+            } catch (err) {
+                console.error("❌ produceReceiptFromPanel ERROR:", err);
+                alert("Fiş oluşturulurken hata oluştu!");
+            }
+        }
+
+        // ========================================
+        //  4️⃣  ÜRETİM FİŞLERİNİ YÜK
+        // ========================================
+        async function loadFinishedGoods() {
+            console.log("📊 Üretim fişleri yükleniyor...");
+            try {
+                const response = await fetch('/FinishedGoods/GetAll');
+                console.log("📊 Response status:", response.status);
+
+                const json = await response.json();
+                console.log("📊 API Response:", json);
+
+                const container = document.getElementById('finishedGoodsContainer');
+                const data = json.data || [];
+
+                console.log("📊 Toplam üretim fişi sayısı:", data.length);
+
+                if (data.length === 0) {
+                    container.innerHTML = '<div class="empty-state">Üretim fişi bulunamadı</div>';
+                    return;
+                }
+
+                let html = '<table class="table-custom"><thead><tr><th>Fiş No</th><th>Tarih</th><th>Malzeme</th><th>Miktar</th></tr></thead><tbody>';
+
+                data.forEach((item, idx) => {
+                    console.log(`📊 Fiş ${idx + 1}:`, item.fisNo, item.malzeme, item.miktar);
+                    html += `
+                        <tr onclick="toggleFisDetail('${item.fisNo}')">
+                            <td><strong>${item.fisNo}</strong></td>
+                            <td>${item.tarih}</td>
+                            <td>${item.malzeme}</td>
+                            <td>${item.miktar}</td>
+                        </tr>
+                        <tr class="fis-detail-row" id="detail-${item.fisNo}" style="display:none;">
+                            <td colspan="4" style="padding:0;">
+                                <div style="padding:12px; background:#fafbfc; border:1px solid var(--border-color);">
+                                    <div class="loading">Yükleniyor...</div>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                html += '</tbody></table>';
+                container.innerHTML = html;
+
+                console.log("✅ Üretim fişleri yüklendi");
+
+            } catch (err) {
+                console.error("❌ loadFinishedGoods ERROR:", err);
+                document.getElementById('finishedGoodsContainer').innerHTML =
+                    '<div class="empty-state">Hata: ' + err.message + '</div>';
+            }
+        }
+
+        // ========================================
+        //  4️⃣  FİŞ DETAYINI AÇ/KAPAT + INLINE EDIT
+        // ========================================
+        async function toggleFisDetail(fisNo) {
+            console.log("🔍 Fiş detayı açılıyor:", fisNo);
+            const detailRow = document.getElementById(`detail-${fisNo}`);
+
+            if (detailRow.style.display === 'table-row') {
+                console.log("🔽 Fiş detayı kapatılıyor");
+                detailRow.style.display = 'none';
+                return;
+            }
+
+            detailRow.style.display = 'table-row';
+            const container = detailRow.querySelector('div');
+
+            console.log("📥 Fiş detayı getiriliyor:", `/FinishedGoodsReceiptWChanges/GetFull/${fisNo}`);
+
+            try {
+                const response = await fetch(`/FinishedGoodsReceiptWChanges/GetFull/${fisNo}`);
+                console.log("📥 Response status:", response.status);
+
+                const full = await response.json();
+                console.log("📦 API Response:", full);
+
+                if (!full.IsSuccessful) {
+                    console.error("❌ Fiş detayı alınamadı:", full.ErrorDesc);
+                    container.innerHTML = '<div style="color:var(--danger-red);">Hata: ' + full.ErrorDesc + '</div>';
+                    return;
+                }
+
+                const data = full.Data;
+                const kalemler = data.Kalem || [];
+
+                console.log("📦 Kalem sayısı:", kalemler.length);
+                console.log("📦 Full Data:", data);
+
+                // FULL JSON'u sakla (inline edit için)
+                const jsonHolder = document.createElement('div');
+                jsonHolder.className = 'jsonHolder';
+                jsonHolder.style.display = 'none';
+                jsonHolder.textContent = JSON.stringify(data);
+
+                let html = `
+                    <div style="display:flex; justify-content:space-between; margin-bottom:12px; padding-bottom:8px; border-bottom:1px solid var(--border-color);">
+                        <div><strong>Fiş No:</strong> ${data.UretSon_FisNo} | <strong>Mamul:</strong> ${data.UretSon_Mamul}</div>
+                        <div><strong>Miktar:</strong> ${data.UretSon_Miktar}</div>
+                    </div>
+                `;
+
+                if (kalemler.length === 0) {
+                    html += '<div style="text-align:center; color:var(--text-secondary);">Kalem bulunamadı</div>';
+                } else {
+                    html += '<table class="table-custom kalemTablo" style="font-size:12px; margin-top:8px;"><thead><tr><th>#</th><th>Stok</th><th>G/C</th><th>Depo</th><th>Miktar</th><th>Miktar2</th><th>Açıklama</th></tr></thead><tbody>';
+
+                    kalemler.forEach((k, idx) => {
+                        console.log(`📦 Kalem ${idx + 1}:`, k.StokKodu, k.DepoKodu, k.Miktar);
+                        html += `
+                            <tr data-inckey="${k.IncKeyNo}">
+                                <td>${k.IncKeyNo}</td>
+                                <td>${k.StokKodu}</td>
+                                <td>${k.GC}</td>
+                                <td>${k.DepoKodu}</td>
+                                <td class="editable" data-field="Miktar" style="cursor:pointer; background:#f0f0f0;">${k.Miktar}</td>
+                                <td class="editable" data-field="Miktar2" style="cursor:pointer; background:#f0f0f0;">${k.Miktar2}</td>
+                                <td>${k.Aciklama || '-'}</td>
+                            </tr>
+                        `;
+                    });
+
+                    html += '</tbody></table>';
+                }
+
+                container.innerHTML = html;
+                container.appendChild(jsonHolder);
+
+                // INLINE EDIT aktif et
+                const table = container.querySelector('.kalemTablo');
+                if (table) {
+                    activateInlineEdit(table, fisNo);
+                }
+
+                console.log("✅ Fiş detayı gösterildi");
+
+            } catch (err) {
+                console.error("❌ toggleFisDetail ERROR:", err);
+                container.innerHTML = '<div style="color:var(--danger-red);">Hata oluştu</div>';
+            }
+        }
+
+        // ===============================================
+        //             INLINE EDIT aktif et
+        // ===============================================
+        function activateInlineEdit(parent, fisNo) {
+            console.log("✏️ Inline edit aktif ediliyor");
+
+            parent.querySelectorAll(".editable").forEach(cell => {
+                cell.addEventListener("click", function () {
+                    if (this.querySelector("input"))
+                        return;
+
+                    let oldValue = this.innerText;
+                    let input = document.createElement("input");
+                    input.classList.add("form-control-custom");
+                    input.style.fontSize = "12px";
+                    input.style.padding = "4px";
+                    input.value = oldValue;
+
+                    this.innerHTML = "";
+                    this.appendChild(input);
+                    input.focus();
+
+                    input.addEventListener("blur", () => saveCell(this, oldValue, fisNo));
+                    input.addEventListener("keydown", e => {
+                        if (e.key === "Enter")
+                            saveCell(this, oldValue, fisNo);
+                    });
+                });
+            });
+        }
+
+        // ===============================================
+        //           SAVE FULL JSON → /Save
+        // ===============================================
+        function saveCell(cell, oldValue, fisNo) {
+            console.log("💾 Hücre kaydediliyor...");
+
+            let input = cell.querySelector("input");
+            let newValue = input.value;
+
+            if (oldValue == newValue) {
+                console.log("⏭️ Değer değişmedi, kaydetme iptal");
+                cell.innerHTML = oldValue;
+                return;
+            }
+
+            let tr = cell.closest("tr");
+            let incKey = parseInt(tr.dataset.inckey);
+
+            let detailRow = document.getElementById(`detail-${fisNo}`);
+            let holder = detailRow.querySelector(".jsonHolder");
+            let fullJson = JSON.parse(holder.textContent);
+
+            console.log("📝 Güncelleniyor - IncKey:", incKey, "Alan:", cell.dataset.field, "Yeni Değer:", newValue);
+
+            // ✔ Kalemi bul ve güncelle
+            fullJson.Kalem.forEach(k => {
+                if (k.IncKeyNo === incKey) {
+                    k[cell.dataset.field] = parseFloat(newValue);
+                }
+            });
+
+            console.log("📤 Save API'ye gönderiliyor...");
+
+            // ✔ SAVE API
+            fetch('/FinishedGoodsReceiptWChanges/Save', {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(fullJson)
+            })
+                .then(r => r.json())
+                .then(res => {
+                    console.log("📥 Save Response:", res);
+
+                    if (res.IsSuccessful === true) {
+                        holder.textContent = JSON.stringify(fullJson);
+                        cell.innerHTML = newValue;
+                        cell.style.backgroundColor = "#c4ffda";
+                        console.log("✅ Kaydedildi!");
+                        setTimeout(() => cell.style.backgroundColor = "", 600);
+                    }
+                    else {
+                        console.error("❌ Kaydetme başarısız:", res.ErrorDesc);
+                        alert("Kaydedilemedi: " + res.ErrorDesc);
+                        cell.innerHTML = oldValue;
+                    }
+                })
+                .catch(err => {
+                    console.error("❌ Save ERROR:", err);
+                    alert("Kayıt sırasında hata oluştu!");
+                    cell.innerHTML = oldValue;
+                });
+        }
+
+        // ========================================
+        //  İŞ EMRİ OLUŞTUR
+        // ========================================
+        async function createProductionOrder() {
+            console.log("🔧 İş emri oluşturuluyor...");
+
+            const isEmriNo = document.getElementById("isemri_IsEmriNo").value.trim();
+            const tarih = document.getElementById("isemri_Tarih").value.trim();
+            const stokKodu = document.getElementById("isemri_StokKodu").value.trim();
+            const miktar = document.getElementById("isemri_Miktar").value.trim();
+            const teslimTarihi = document.getElementById("isemri_TeslimTarihi").value.trim();
+            const depoKodu = document.getElementById("isemri_DepoKodu").value.trim();
+            const cikisDepoKodu = document.getElementById("isemri_CikisDepoKodu").value.trim();
+            const siparisNo = document.getElementById("isemri_SiparisNo").value.trim();
+
+            console.log("🔧 Form verileri:", { isEmriNo, tarih, stokKodu, miktar, teslimTarihi, depoKodu, cikisDepoKodu, siparisNo });
+
+            if (!isEmriNo || !tarih || !stokKodu || !miktar || !teslimTarihi || !depoKodu || !cikisDepoKodu) {
+                console.warn("⚠️ Zorunlu alanlar eksik");
+                alert("⚠️ Zorunlu alanları doldurun!");
+                return;
+            }
+
+            const payload = {
+                IsEmriNo: isEmriNo,
+                Tarih: tarih + " 00:00:00",
+                StokKodu: stokKodu,
+                Miktar: parseFloat(miktar),
+                TeslimTarihi: teslimTarihi + " 00:00:00",
+                DepoKodu: parseInt(depoKodu),
+                CikisDepoKodu: parseInt(cikisDepoKodu),
+                SiparisNo: siparisNo || null,
+                Aciklama: ""
+            };
+
+            console.log("📤 Gönderilen payload:", JSON.stringify(payload, null, 2));
+
+            try {
+                const response = await fetch('/FullProductionWorkflow/CreateProductionOrder', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                console.log("📤 Response status:", response.status);
+
+                const result = await response.json();
+                console.log("📥 API Response:", result);
+
+                if (result.IsSuccessful === true) {
+                    console.log("✅ İş emri başarıyla oluşturuldu");
+                    alert("✅ İş emri başarıyla oluşturuldu!");
+                    await loadProductionOrders();
+
+                    // Formu temizle
+                    document.getElementById("isemri_IsEmriNo").value = '';
+                    document.getElementById("isemri_StokKodu").value = '';
+                    document.getElementById("isemri_Miktar").value = '';
+                    document.getElementById("isemri_SiparisNo").value = '';
+                } else {
+                    console.error("❌ İş emri oluşturulamadı:", result.ErrorDesc);
+                    alert("❌ İş emri oluşturulamadı: " + (result.ErrorDesc || "Bilinmeyen hata"));
+                }
+
+            } catch (err) {
+                console.error("❌ createProductionOrder ERROR:", err);
+                alert("İş emri oluşturulurken hata oluştu: " + err.message);
+            }
+        }
+
+    </script>
+}

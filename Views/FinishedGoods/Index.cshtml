@@ -14,193 +14,224 @@
                 <th>Malzeme</th>
                 <th>Miktar</th>
                 <th>Birim</th>
-                <th>İşlem</th>
+                <th style="width:50px">📌</th>
             </tr>
         </thead>
         <tbody>
             <tr><td colspan="7" class="text-center">Yükleniyor...</td></tr>
         </tbody>
     </table>
-</div>
 
-<!-- Detay Modal -->
-<div class="modal fade" id="detailModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header bg-warning text-dark">
-                <h5 class="modal-title">📋 Fiş Detayı</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div id="detailInfo" class="mb-3 p-2 bg-light small"></div>
-                <table class="table table-bordered">
-                    <thead class="table-warning">
-                        <tr>
-                            <th>#</th>
-                            <th>Stok Kodu</th>
-                            <th>Depo</th>
-                            <th>Miktar</th>
-                            <th>BG Tip</th>
-                            <th>Seri</th>
-                        </tr>
-                    </thead>
-                    <tbody id="detailTableBody">
-                        <tr><td colspan="6" class="text-center">Yükleniyor...</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
+    <div class="d-flex justify-content-between mt-3">
+        <button id="prevPage" class="btn btn-secondary btn-sm">⬅ Önceki</button>
+        <span id="pageInfo" class="fw-bold"></span>
+        <button id="nextPage" class="btn btn-secondary btn-sm">İleri ➡</button>
     </div>
 </div>
 
 @section Scripts {
-<script>
-document.addEventListener("DOMContentLoaded", async () => {
-    const tbody = document.querySelector("#finishedTable tbody");
+    <script>
+        document.addEventListener("DOMContentLoaded", async () => {
 
-    // Liste yükle
-    async function loadList() {
-        tbody.innerHTML = "<tr><td colspan='7' class='text-center'>Yükleniyor...</td></tr>";
-        try {
-            const res = await fetch("/FinishedGoods/GetAll");
-            const json = await res.json();
-            const data = json.data || [];
-            
-            tbody.innerHTML = "";
-            if (data.length === 0) {
-                tbody.innerHTML = "<tr><td colspan='7' class='text-center text-muted'>Kayıt bulunamadı</td></tr>";
-                return;
+            let currentPage = 1;
+            const pageSize = 10;
+
+            const tbody = document.querySelector("#finishedTable tbody");
+            const pageInfo = document.querySelector("#pageInfo");
+
+            // --- SAYFALI LİSTE ---
+            async function loadList(page = 1) {
+                tbody.innerHTML =
+                    "<tr><td colspan='7' class='text-center'>Yükleniyor...</td></tr>";
+
+                try {
+                    const res = await fetch(`/FinishedGoods/GetAll?page=${page}&pageSize=${pageSize}`);
+                    const json = await res.json();
+
+                    const data = json.data || [];
+                    const total = json.totalCount || data.length;
+
+                    pageInfo.textContent = `Sayfa ${page}`;
+
+                    tbody.innerHTML = "";
+
+                    if (data.length === 0) {
+                        tbody.innerHTML =
+                            "<tr><td colspan='7' class='text-center text-muted'>Kayıt bulunamadı</td></tr>";
+                        return;
+                    }
+
+                    data.forEach(x => {
+                        tbody.innerHTML += `
+                            <tr class="fis-row" data-id="${x.fisNo}">
+                                <td>${x.fisNo}</td>
+                                <td>${x.tarih}</td>
+                                <td>${x.depo}</td>
+                                <td>${x.malzeme}</td>
+                                <td>${x.miktar}</td>
+                                <td>${x.birim}</td>
+                                <td class="text-center" style="cursor:pointer">⤵</td>
+                            </tr>
+
+                            <tr class="pivot-row d-none" id="pivot-${x.fisNo}">
+                                <td colspan="7">
+                                    <div class="p-2 text-center text-muted">Yükleniyor...</div>
+                                </td>
+                            </tr>
+                        `;
+                    });
+
+                } catch (err) {
+                    tbody.innerHTML =
+                        "<tr><td colspan='7' class='text-center text-danger'>Hata: " + err.message + "</td></tr>";
+                }
             }
 
-            data.forEach(x => {
-                tbody.innerHTML += `
-                    <tr data-id="${x.fisNo}">
-                        <td>${x.fisNo}</td>
-                        <td>${x.tarih}</td>
-                        <td>${x.depo}</td>
-                        <td>${x.malzeme}</td>
-                        <td>${x.miktar}</td>
-                        <td>${x.birim}</td>
-                        <td>
-                            <button class="btn btn-sm btn-outline-warning detail">🔍</button>
-                        </td>
-                    </tr>`;
+            await loadList(currentPage);
+
+            // Sayfa değiştirme
+            document.getElementById("prevPage").addEventListener("click", async () => {
+                if (currentPage > 1) {
+                    currentPage--;
+                    await loadList(currentPage);
+                }
             });
-        } catch (err) {
-            tbody.innerHTML = "<tr><td colspan='7' class='text-center text-danger'>Hata: " + err.message + "</td></tr>";
-        }
-    }
 
-    await loadList();
+            document.getElementById("nextPage").addEventListener("click", async () => {
+                currentPage++;
+                await loadList(currentPage);
+            });
 
-    // Detay modal
-    document.addEventListener("click", async e => {
-        if (e.target.classList.contains("detail")) {
-            const id = e.target.closest("tr").dataset.id;
-            const modal = new bootstrap.Modal("#detailModal");
-            modal.show();
 
-            const detailBody = document.getElementById("detailTableBody");
-            const detailInfo = document.getElementById("detailInfo");
-            detailBody.innerHTML = "<tr><td colspan='6' class='text-center'>Yükleniyor...</td></tr>";
+            // --- SATIRA TIKLAYINCA PIVOT DETAYI AÇ/KAPA ---
+            document.addEventListener("click", async e => {
+                const tr = e.target.closest(".fis-row");
+                if (!tr) return;
 
-            try {
-                const res = await fetch(`/FinishedGoods/Detail/${id}`);
-                const json = await res.json();
-                
-                if (!json.success) {
-                    detailBody.innerHTML = `<tr><td colspan='6' class='text-center text-danger'>${json.message}</td></tr>`;
+                const fisNo = tr.dataset.id;
+                const pivot = document.getElementById(`pivot-${fisNo}`);
+                const pivotTd = pivot.querySelector("td");
+
+                // açık ise kapat
+                if (!pivot.classList.contains("d-none")) {
+                    pivot.classList.add("d-none");
                     return;
                 }
 
-                const data = json.data;
-                detailInfo.innerHTML = `
-                    <strong>Fiş No:</strong> ${data.uretSon_FisNo} |
-                    <strong>Tarih:</strong> ${data.uretSon_Tarih} |
-                    <strong>Mamul:</strong> ${data.uretSon_Mamul} |
-                    <strong>Miktar:</strong> ${data.uretSon_Miktar} |
-                    <strong>Depo:</strong> ${data.uretSon_Depo}
-                `;
+                // önce kapalıysa aç
+                pivot.classList.remove("d-none");
+                pivotTd.innerHTML = "<div class='p-2 text-muted'>Yükleniyor...</div>";
 
-                const kalemler = data.kalem || [];
-                if (kalemler.length === 0) {
-                    detailBody.innerHTML = "<tr><td colspan='6' class='text-center text-muted'>Kalem bulunamadı</td></tr>";
-                    return;
+                // detay getir
+                try {
+                    const res = await fetch(`/FinishedGoods/Detail/${fisNo}`);
+                    const json = await res.json();
+
+                    if (!json.success) {
+                        pivotTd.innerHTML =
+                            `<div class='text-danger p-2'>${json.message}</div>`;
+                        return;
+                    }
+
+                    const data = json.data;
+                    const kalemler = data.kalem || [];
+
+                    if (kalemler.length === 0) {
+                        pivotTd.innerHTML =
+                            "<div class='p-2 text-muted text-center'>Kalem bulunamadı</div>";
+                        return;
+                    }
+
+                    let html = `
+                        <div class="fw-bold mb-2">
+                            <strong>Fiş No:</strong> ${data.uretSon_FisNo} |
+                            <strong>Tarih:</strong> ${data.uretSon_Tarih} |
+                            <strong>Mamul:</strong> ${data.uretSon_Mamul} |
+                            <strong>Miktar:</strong> ${data.uretSon_Miktar} |
+                            <strong>Depo:</strong> ${data.uretSon_Depo}
+                        </div>
+
+                        <table class="table table-sm table-bordered mb-0">
+                            <thead class="table-warning">
+                                <tr>
+                                    <th>#</th>
+                                    <th>Stok Kodu</th>
+                                    <th>Depo</th>
+                                    <th>Miktar</th>
+                                    <th>BG Tip</th>
+                                    <th>Seri</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    `;
+
+                    kalemler.forEach(k => {
+                        html += `
+                            <tr class="kalem-row" data-fis="${fisNo}">
+                                <td>${k.index}</td>
+                                <td>${k.stokKodu}</td>
+                                <td>${k.depoKodu}</td>
+                                <td class="editable-qty" contenteditable="true">${k.miktar}</td>
+                                <td>${k.bGTIP}</td>
+                                <td>${k.seriVarMi ? "✅" : "❌"}</td>
+                            </tr>
+                        `;
+                    });
+
+                    html += "</tbody></table>";
+
+                    pivotTd.innerHTML = html;
+
+                } catch (err) {
+                    pivotTd.innerHTML =
+                        "<div class='p-2 text-danger text-center'>Hata oluştu</div>";
                 }
+            });
 
-                detailBody.innerHTML = "";
-                kalemler.forEach(k => {
-                    detailBody.innerHTML += `
-                        <tr>
-                            <td>${k.index}</td>
-                            <td>${k.stokKodu}</td>
-                            <td>${k.depoKodu}</td>
-                            <td class="editable-qty" data-stok="${k.stokKodu}">${k.miktar}</td>
-                            <td>${k.bGTIP}</td>
-                            <td>${k.seriVarMi ? "✅" : "❌"}</td>
-                        </tr>`;
-                });
-            } catch (err) {
-                detailBody.innerHTML = "<tr><td colspan='6' class='text-center text-danger'>Hata!</td></tr>";
-            }
-        }
-    });
 
-    // Miktar düzenle (double click)
-    document.addEventListener("dblclick", async e => {
-        const td = e.target.closest("td");
-        if (!td || !td.classList.contains("editable-qty") || td.querySelector("input")) return;
+            // --- INLINE MİKTAR DÜZENLEME ---
+            document.addEventListener("blur", async e => {
+                const td = e.target.closest(".editable-qty");
+                if (!td) return;
 
-        const original = td.textContent.trim();
-        const input = document.createElement("input");
-        input.type = "number";
-        input.step = "0.001";
-        input.value = original;
-        input.className = "form-control form-control-sm";
-        td.innerHTML = "";
-        td.appendChild(input);
-        input.focus();
+                const tr = td.closest(".kalem-row");
 
-        input.addEventListener("blur", async () => {
-            const newValue = parseFloat(input.value) || 0;
-            td.textContent = newValue.toFixed(3);
+                const newValue = parseFloat(td.textContent) || 0;
+                td.textContent = newValue.toFixed(3);
 
-            const tr = td.closest("tr");
-            const cells = tr.querySelectorAll("td");
-            const fisNo = document.querySelector("#detailInfo").textContent.match(/Fiş No:\s*(\d+)/)?.[1] || "";
+                const fis = tr.dataset.fis;
+                const cells = tr.querySelectorAll("td");
 
-            const dto = {
-                fisNo,
-                index: parseInt(cells[0].textContent.trim()),
-                stokKodu: cells[1].textContent.trim(),
-                depoKodu: parseInt(cells[2].textContent.trim()),
-                miktar: newValue,
-                bGTIP: cells[4].textContent.trim(),
-                seriVarMi: cells[5].textContent.includes("✅"),
-                aciklama: ""
-            };
+                const dto = {
+                    fisNo: fis,
+                    index: parseInt(cells[0].textContent.trim()),
+                    stokKodu: cells[1].textContent.trim(),
+                    depoKodu: parseInt(cells[2].textContent.trim()),
+                    miktar: newValue,
+                    bGTIP: cells[4].textContent.trim(),
+                    seriVarMi: cells[5].textContent.includes("✅"),
+                    aciklama: ""
+                };
 
-            try {
-                const res = await fetch("/FinishedGoods/UpdateQuantity", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(dto)
-                });
+                try {
+                    const res = await fetch("/FinishedGoods/UpdateQuantity", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(dto)
+                    });
 
-                const json = await res.json();
-                if (json.success) {
-                    td.style.backgroundColor = "#d4edda";
-                } else {
+                    const json = await res.json();
+
+                    td.style.backgroundColor = json.success ? "#d4edda" : "#f8d7da";
+                    setTimeout(() => td.style.backgroundColor = "", 1500);
+
+                } catch {
                     td.style.backgroundColor = "#f8d7da";
-                    alert("❌ Güncelleme başarısız: " + (json.message || "Hata"));
+                    setTimeout(() => td.style.backgroundColor = "", 1500);
                 }
-                setTimeout(() => td.style.backgroundColor = "", 1500);
-            } catch (err) {
-                td.style.backgroundColor = "#f8d7da";
-                setTimeout(() => td.style.backgroundColor = "", 1500);
-            }
+
+            }, true);
+
         });
-    });
-});
-</script>
+    </script>
 }

@@ -1,0 +1,307 @@
+﻿@model IEnumerable<dynamic>
+
+<h2>Ambar Çıkış Fişleri (docType=9)</h2>
+
+<div class="mb-3">
+    <a href="@Url.Action("New", "AmbarCikis")" class="btn btn-success">+ Yeni Fiş Oluştur</a>
+</div>
+
+<table class="table table-bordered table-striped" id="ambarTable">
+    <thead class="table-dark">
+        <tr>
+            <th>Fiş No</th>
+            <th>Tarih</th>
+            <th>Depo</th>
+            <th>Kalem Adedi</th>
+            <th>İşlem</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var f in Model)
+        {
+            var firstKalem = (f.Kalems != null && f.Kalems.Count > 0) ? f.Kalems[0] : null;
+
+            string fisNo = f.FatUst.FATIRS_NO;
+            string tarih = f.FatUst.Tarih;
+            int? depo = firstKalem != null ? (int?)firstKalem.DEPO_KODU : null;
+            int kalemAdedi = f.Kalems != null ? (int)f.Kalems.Count : 0;
+
+            <tr class="fisRow" data-fisno="@fisNo">
+                <td>@fisNo</td>
+                <td>@tarih</td>
+                <td>@(depo?.ToString() ?? "-")</td>
+                <td>@kalemAdedi</td>
+                <td>
+                    <button class="btn btn-sm btn-danger btnDeleteFis" data-fisno="@fisNo">Sil</button>
+                </td>
+            </tr>
+
+            <tr class="detailRow" style="display:none;" data-fisno="@fisNo">
+                <td colspan="5">
+
+                    <div class="loader">Yükleniyor...</div>
+                    <div class="jsonHolder" style="display:none;"></div>
+
+                    <table class="table table-sm table-striped mt-2 kalemTablo"></table>
+
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@{
+    int page = ViewBag.Page ?? 1;
+    int pageSize = ViewBag.PageSize ?? 20;
+    int total = ViewBag.TotalCount ?? 0;
+
+    int totalPages = (int)Math.Ceiling((double)(total == 0 ? 1 : total) / pageSize);
+
+    int maxVisible = 10;
+    int startPage = Math.Max(1, page - maxVisible / 2);
+    int endPage = Math.Min(totalPages, startPage + maxVisible - 1);
+
+    if (endPage - startPage < maxVisible - 1)
+    {
+        startPage = Math.Max(1, endPage - maxVisible + 1);
+    }
+}
+
+<nav>
+    <ul class="pagination justify-content-center">
+        <li class="page-item @(page == 1 ? "disabled" : "")">
+            <a class="page-link" href="?page=1">⏮ İlk</a>
+        </li>
+        <li class="page-item @(page == 1 ? "disabled" : "")">
+            <a class="page-link" href="?page=@(page - 1)">◀</a>
+        </li>
+
+        @for (int i = startPage; i <= endPage; i++)
+        {
+            <li class="page-item @(i == page ? "active" : "")">
+                <a class="page-link" href="?page=@i">@i</a>
+            </li>
+        }
+
+        <li class="page-item @(page == totalPages ? "disabled" : "")">
+            <a class="page-link" href="?page=@(page + 1)">▶</a>
+        </li>
+        <li class="page-item @(page == totalPages ? "disabled" : "")">
+            <a class="page-link" href="?page=@totalPages">⏭ Son</a>
+        </li>
+    </ul>
+</nav>
+
+@section Scripts {
+    <script>
+        // ===============================================
+        //            PIVOT AÇ / KAPAT
+        // ===============================================
+        document.querySelectorAll(".fisRow").forEach(row => {
+
+            row.addEventListener("click", function (e) {
+
+                if (e.target.closest('.btnDeleteFis')) {
+                    return;
+                }
+
+                let fisNo = this.dataset.fisno;
+                let detailRow = document.querySelector(`.detailRow[data-fisno="${fisNo}"]`);
+                let table = detailRow.querySelector(".kalemTablo");
+                let holder = detailRow.querySelector(".jsonHolder");
+                let loader = detailRow.querySelector(".loader");
+
+                if (detailRow.style.display === "none") {
+
+                    detailRow.style.display = "";
+                    loader.style.display = "block";
+                    table.innerHTML = "";
+
+                    fetch(`/AmbarCikis/GetFull?fisNo=${fisNo}`)
+                        .then(r => r.json())
+                        .then(full => {
+
+                            loader.style.display = "none";
+
+                            if (!full.IsSuccessful) {
+                                table.innerHTML = "<tr><td>Fiş bulunamadı veya hata oluştu</td></tr>";
+                                return;
+                            }
+
+                            let data = full.Data;
+                            holder.innerText = JSON.stringify(data);
+
+                            let html = `
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Stok</th>
+                                        <th>Depo</th>
+                                        <th>Miktar</th>
+                                        <th>Birim Fiyat</th>
+                                        <th>Açıklama</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                            `;
+
+                            (data.Kalems || []).forEach(k => {
+                                html += `
+                                    <tr data-inckey="${k.IncKeyNo}">
+                                        <td>${k.StokKodu}</td>
+                                        <td class="editable" data-field="DEPO_KODU">${k.DEPO_KODU}</td>
+                                        <td class="editable" data-field="STra_GCMIK">${k.STra_GCMIK}</td>
+                                        <td class="editable" data-field="STra_BF">${k.STra_BF}</td>
+                                        <td>${k.STra_ACIK || ""}</td>
+                                    </tr>
+                                `;
+                            });
+
+                            html += "</tbody>";
+                            table.innerHTML = html;
+
+                            activateInlineEdit(table, fisNo);
+                        })
+                        .catch(err => {
+                            loader.style.display = "none";
+                            table.innerHTML = `<tr><td colspan="5">Hata: ${err}</td></tr>`;
+                        });
+
+                } else {
+                    detailRow.style.display = "none";
+                }
+
+            });
+
+        });
+
+
+        // ===============================================
+        //             INLINE EDIT aktif et
+        // ===============================================
+        function activateInlineEdit(parent, fisNo) {
+
+            parent.querySelectorAll(".editable").forEach(cell => {
+
+                cell.addEventListener("click", function () {
+
+                    if (this.querySelector("input"))
+                        return;
+
+                    let oldValue = this.innerText;
+                    let input = document.createElement("input");
+                    input.classList.add("form-control", "form-control-sm");
+                    input.value = oldValue;
+
+                    this.innerHTML = "";
+                    this.appendChild(input);
+                    input.focus();
+
+                    input.addEventListener("blur", () => saveCell(this, oldValue, fisNo));
+                    input.addEventListener("keydown", e => {
+                        if (e.key === "Enter")
+                            saveCell(this, oldValue, fisNo);
+                        if (e.key === "Escape") {
+                            this.innerHTML = oldValue;
+                        }
+                    });
+                });
+            });
+        }
+
+
+        // ===============================================
+        //           SAVE FULL JSON → /AmbarCikis/Save
+        // ===============================================
+        function saveCell(cell, oldValue, fisNo) {
+
+            let input = cell.querySelector("input");
+            if (!input) return;
+
+            let newValue = input.value;
+
+            if (oldValue == newValue) {
+                cell.innerHTML = oldValue;
+                return;
+            }
+
+            let tr = cell.closest("tr");
+            let incKey = parseInt(tr.dataset.inckey);
+
+            let detailRow = document.querySelector(`.detailRow[data-fisno="${fisNo}"]`);
+            let holder = detailRow.querySelector(".jsonHolder");
+            let fullJson = JSON.parse(holder.innerText);
+
+            (fullJson.Kalems || []).forEach(k => {
+                if (k.IncKeyNo === incKey) {
+                    let field = cell.dataset.field;
+
+                    if (field === "DEPO_KODU") {
+                        k[field] = parseInt(newValue);
+                    } else if (field === "STra_GCMIK" || field === "STra_BF") {
+                        k[field] = parseFloat(newValue.replace(",", "."));
+                    } else {
+                        k[field] = newValue;
+                    }
+                }
+            });
+
+            fetch('/AmbarCikis/Save', {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(fullJson)
+            })
+                .then(r => r.json())
+                .then(res => {
+
+                    if (res.IsSuccessful === true) {
+
+                        holder.innerText = JSON.stringify(fullJson);
+                        cell.innerHTML = newValue;
+
+                        cell.style.backgroundColor = "#c4ffda";
+                        setTimeout(() => cell.style.backgroundColor = "", 600);
+                    }
+                    else {
+                        alert("Kaydedilemedi: " + (res.ErrorDesc || "Bilinmeyen hata"));
+                        cell.innerHTML = oldValue;
+                    }
+                })
+                .catch(err => {
+                    alert("Hata oluştu: " + err);
+                    cell.innerHTML = oldValue;
+                });
+        }
+
+        // ===============================================
+        //             FİŞ SİLME
+        // ===============================================
+        document.querySelectorAll(".btnDeleteFis").forEach(btn => {
+            btn.addEventListener("click", function (e) {
+                e.stopPropagation();
+
+                let fisNo = this.dataset.fisno;
+
+                if (!confirm(`${fisNo} numaralı fişi silmek istediğinize emin misiniz?`)) {
+                    return;
+                }
+
+                fetch(`/AmbarCikis/Delete?fisNo=${fisNo}`, {
+                    method: "POST"
+                })
+                    .then(r => r.json())
+                    .then(res => {
+                        if (res.IsSuccessful === true) {
+                            alert("Fiş başarıyla silindi.");
+                            location.reload();
+                        } else {
+                            alert("Silme başarısız: " + (res.ErrorDesc || "Bilinmeyen hata"));
+                        }
+                    })
+                    .catch(err => {
+                        alert("Hata oluştu: " + err);
+                    });
+            });
+        });
+
+    </script>
+}

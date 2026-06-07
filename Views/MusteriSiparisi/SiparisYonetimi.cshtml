@@ -1,0 +1,931 @@
+@{
+    ViewData["Title"] = "Sipariş Yönetimi";
+    ViewData["FullWidth"] = true;
+}
+
+<style>
+    /* Minimalist GitHub/Apple tarzı temiz tasarım */
+    :root {
+        --border-color: #e1e4e8;
+        --bg-panel: #ffffff;
+        --bg-hover: #f6f8fa;
+        --text-primary: #24292e;
+        --text-secondary: #586069;
+        --accent-blue: #0366d6;
+        --success-green: #28a745;
+        --danger-red: #d73a49;
+    }
+
+    body {
+        background: #f6f8fa;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    }
+
+    .container-fluid {
+        padding: 12px;
+        max-width: 100%;
+    }
+
+    /* TAB YAPISI */
+    .tab-container {
+        background: var(--bg-panel);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        overflow: hidden;
+    }
+
+    .tab-header {
+        display: flex;
+        border-bottom: 1px solid var(--border-color);
+        background: var(--bg-hover);
+    }
+
+    .tab-button {
+        flex: 1;
+        padding: 12px 16px;
+        background: transparent;
+        border: none;
+        border-bottom: 2px solid transparent;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--text-secondary);
+        transition: all 0.2s;
+    }
+
+    .tab-button:hover {
+        background: rgba(3, 102, 214, 0.05);
+        color: var(--text-primary);
+    }
+
+    .tab-button.active {
+        color: var(--accent-blue);
+        border-bottom-color: var(--accent-blue);
+        background: var(--bg-panel);
+    }
+
+    .tab-content {
+        display: none;
+        padding: 16px;
+    }
+
+    .tab-content.active {
+        display: block;
+    }
+
+    /* WORKFLOW CONTAINER (İlk tab için) */
+    .workflow-container {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 12px;
+        max-width: 100%;
+        margin: 0;
+    }
+
+    @@media (max-width: 768px) {
+        .workflow-container {
+            grid-template-columns: 1fr;
+            gap: 16px;
+        }
+
+        .workflow-panel {
+            max-height: none;
+            min-height: 400px;
+        }
+
+        .panel-body {
+            max-height: 400px;
+        }
+    }
+
+    @@media (min-width: 769px) and (max-width: 1200px) {
+        .workflow-container {
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .workflow-panel:last-child {
+            grid-column: 1 / -1;
+        }
+    }
+
+    .workflow-panel {
+        background: var(--bg-panel);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        max-height: calc(100vh - 150px);
+    }
+
+    .panel-header {
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border-color);
+        background: var(--bg-hover);
+        font-weight: 600;
+        font-size: 14px;
+        color: var(--text-primary);
+    }
+
+    .panel-body {
+        padding: 12px;
+        overflow-y: auto;
+        flex: 1;
+    }
+
+    .panel-body::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .panel-body::-webkit-scrollbar-track {
+        background: #f1f1f1;
+    }
+
+    .panel-body::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 4px;
+    }
+
+    .form-group {
+        margin-bottom: 10px;
+    }
+
+    .form-label {
+        display: block;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 6px;
+    }
+
+    .form-control-custom {
+        width: 100%;
+        padding: 8px 12px;
+        font-size: 14px;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        background: var(--bg-panel);
+        transition: border-color 0.15s;
+    }
+
+    .form-control-custom:focus {
+        outline: none;
+        border-color: var(--accent-blue);
+        box-shadow: 0 0 0 3px rgba(3, 102, 214, 0.1);
+    }
+
+    .btn-custom {
+        padding: 8px 16px;
+        font-size: 14px;
+        font-weight: 500;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+
+    .btn-primary-custom {
+        background: var(--accent-blue);
+        color: white;
+    }
+
+    .btn-primary-custom:hover {
+        background: #0256c2;
+    }
+
+    .btn-success-custom {
+        background: var(--success-green);
+        color: white;
+    }
+
+    .btn-success-custom:hover {
+        background: #22863a;
+    }
+
+    .btn-danger-custom {
+        background: var(--danger-red);
+        color: white;
+        font-size: 11px;
+        padding: 4px 8px;
+    }
+
+    .btn-danger-custom:hover {
+        background: #cb2431;
+    }
+
+    .table-custom {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+    }
+
+    .table-custom thead {
+        background: var(--bg-hover);
+        border-bottom: 2px solid var(--border-color);
+    }
+
+    .table-custom th {
+        padding: 10px 12px;
+        text-align: left;
+        font-weight: 600;
+        color: var(--text-primary);
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .table-custom td {
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--border-color);
+        color: var(--text-primary);
+    }
+
+    .table-custom tbody tr {
+        cursor: pointer;
+        transition: background 0.1s;
+    }
+
+    .table-custom tbody tr:hover {
+        background: var(--bg-hover);
+    }
+
+    .table-custom tbody tr.selected {
+        background: #e3f2fd;
+    }
+
+    .create-form {
+        background: var(--bg-hover);
+        padding: 12px;
+        border-radius: 6px;
+        margin-bottom: 12px;
+    }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+        margin-bottom: 8px;
+    }
+
+    @@media (max-width: 480px) {
+        .form-row {
+            grid-template-columns: 1fr;
+        }
+
+        .table-custom {
+            font-size: 11px;
+        }
+
+        .table-custom th,
+        .table-custom td {
+            padding: 6px 8px;
+        }
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 40px 20px;
+        color: var(--text-secondary);
+    }
+
+    .empty-state-icon {
+        font-size: 48px;
+        margin-bottom: 12px;
+        opacity: 0.3;
+    }
+
+    .badge-custom {
+        display: inline-block;
+        padding: 2px 8px;
+        font-size: 11px;
+        font-weight: 600;
+        border-radius: 12px;
+        background: var(--bg-hover);
+        color: var(--text-secondary);
+    }
+
+    .loading {
+        text-align: center;
+        padding: 20px;
+        color: var(--text-secondary);
+    }
+
+    .editable-cell {
+        cursor: text;
+        padding: 4px 8px;
+        border-radius: 3px;
+    }
+
+    .editable-cell:hover {
+        background: var(--bg-hover);
+    }
+
+    /* Kalem tablosu için küçük stil */
+    .kalem-table {
+        width: 100%;
+        font-size: 12px;
+        margin-top: 8px;
+    }
+
+    .kalem-table td {
+        padding: 6px 8px;
+    }
+
+    .tutar-cell {
+        text-align: right;
+        font-weight: 600;
+    }
+</style>
+
+<div class="container-fluid">
+    <div class="tab-container">
+        
+        <!-- TAB BAŞLIKLARI -->
+        <div class="tab-header">
+            <button class="tab-button active" onclick="switchTab(0)">
+                📋 Müşteri Siparişi Girişi
+            </button>
+            <button class="tab-button" onclick="switchTab(1)">
+                📊 Tab 2
+            </button>
+            <button class="tab-button" onclick="switchTab(2)">
+                📦 Tab 3
+            </button>
+            <button class="tab-button" onclick="switchTab(3)">
+                🔧 Tab 4
+            </button>
+        </div>
+
+        <!-- TAB 1: MÜŞTERİ SİPARİŞİ GİRİŞİ -->
+        <div class="tab-content active" id="tab-0">
+            <div class="workflow-container">
+                
+                <!-- SOL PANEL: YENİ SİPARİŞ OLUŞTUR -->
+                <div class="workflow-panel">
+                    <div class="panel-header">
+                        ✏️ Yeni Sipariş Oluştur
+                    </div>
+                    <div class="panel-body">
+                        
+                        <div class="create-form">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">Seri *</label>
+                                    <input id="new_Seri" class="form-control-custom" value="S" />
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Fiş No *</label>
+                                    <input id="new_FisNo" class="form-control-custom" placeholder="000000000000123" />
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Cari Kodu *</label>
+                                <input id="new_CariKod" class="form-control-custom" placeholder="Cari kodu" />
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">Tarih *</label>
+                                    <input id="new_Tarih" type="date" class="form-control-custom" />
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Teslim Tarihi *</label>
+                                    <input id="new_TesTarih" type="date" class="form-control-custom" />
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">Şube Kodu</label>
+                                    <input id="new_SubeKodu" class="form-control-custom" value="0" />
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Özel Kod</label>
+                                    <input id="new_OzelKod" class="form-control-custom" value="1" readonly />
+                                </div>
+                            </div>
+                        </div>
+
+                        <h6 style="font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 12px;">
+                            KALEMLER
+                        </h6>
+
+                        <table class="table-custom kalem-table" id="kalemTable">
+                            <thead>
+                                <tr>
+                                    <th>Stok Kodu *</th>
+                                    <th>Depo</th>
+                                    <th>Miktar *</th>
+                                    <th>Fiyat *</th>
+                                    <th>Tutar</th>
+                                    <th style="width:40px;"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><input class="form-control-custom stokKodu" placeholder="Stok" /></td>
+                                    <td><input class="form-control-custom depoKodu" value="10" style="width:60px;" /></td>
+                                    <td><input class="form-control-custom miktar" value="1" style="width:80px;" /></td>
+                                    <td><input class="form-control-custom bf" value="0" style="width:80px;" /></td>
+                                    <td class="tutar-cell">0.00</td>
+                                    <td><button type="button" class="btn-custom btn-danger-custom btnRemoveLine">X</button></td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <button type="button" class="btn-custom btn-primary-custom" id="btnAddLine" style="width:100%; margin-top:8px;">
+                            + Kalem Ekle
+                        </button>
+
+                        <button type="button" class="btn-custom btn-success-custom" id="btnCreateOrder" style="width:100%; margin-top:12px;">
+                            ✓ Siparişi Oluştur
+                        </button>
+
+                    </div>
+                </div>
+
+                <!-- ORTA PANEL: SİPARİŞ LİSTESİ -->
+                <div class="workflow-panel">
+                    <div class="panel-header">
+                        📊 Sipariş Listesi
+                    </div>
+                    <div class="panel-body" id="orderListContainer">
+                        <div class="loading">Yükleniyor...</div>
+                    </div>
+                </div>
+
+                <!-- SAĞ PANEL: SİPARİŞ DETAYI -->
+                <div class="workflow-panel">
+                    <div class="panel-header">
+                        📝 Sipariş Detayı
+                    </div>
+                    <div class="panel-body" id="orderDetailContainer">
+                        <div class="empty-state">
+                            <div class="empty-state-icon">📋</div>
+                            <div>Ortadaki listeden bir sipariş seçin</div>
+                            <div style="font-size: 12px; color: var(--text-secondary); margin-top: 8px;">
+                                Seçilen siparişin detayları burada görünecek
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- TAB 2 -->
+        <div class="tab-content" id="tab-1">
+            <div class="empty-state">
+                <div class="empty-state-icon">📊</div>
+                <div>Tab 2 içeriği buraya gelecek</div>
+            </div>
+        </div>
+
+        <!-- TAB 3 -->
+        <div class="tab-content" id="tab-2">
+            <div class="empty-state">
+                <div class="empty-state-icon">📦</div>
+                <div>Tab 3 içeriği buraya gelecek</div>
+            </div>
+        </div>
+
+        <!-- TAB 4 -->
+        <div class="tab-content" id="tab-3">
+            <div class="empty-state">
+                <div class="empty-state-icon">🔧</div>
+                <div>Tab 4 içeriği buraya gelecek</div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        let selectedFisNo = null;
+        let currentOrderData = null;
+
+        ///////////////////////////////////////////////////////////////
+        // TAB DEĞİŞTİRME
+        ///////////////////////////////////////////////////////////////
+        function switchTab(index) {
+            // Tüm tab butonlarını pasif yap
+            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+            // Seçili tab'ı aktif yap
+            document.querySelectorAll('.tab-button')[index].classList.add('active');
+            document.getElementById(`tab-${index}`).classList.add('active');
+        }
+
+        ///////////////////////////////////////////////////////////////
+        // SAYFA YÜKLENİNCE
+        ///////////////////////////////////////////////////////////////
+        document.addEventListener("DOMContentLoaded", async function () {
+            // Bugünün tarihini otomatik doldur
+            let today = new Date().toISOString().split('T')[0];
+            document.getElementById("new_Tarih").value = today;
+            document.getElementById("new_TesTarih").value = today;
+
+            // Sipariş listesini yükle
+            await loadOrderList();
+
+            // Event listener'ları bağla
+            attachEventListeners();
+        });
+
+        ///////////////////////////////////////////////////////////////
+        // EVENT LISTENERS
+        ///////////////////////////////////////////////////////////////
+        function attachEventListeners() {
+            // Kalem ekleme
+            document.getElementById("btnAddLine").addEventListener("click", addKalemLine);
+
+            // Sipariş oluşturma
+            document.getElementById("btnCreateOrder").addEventListener("click", createOrder);
+
+            // Kalem silme ve tutar hesaplama
+            attachKalemHandlers();
+        }
+
+        ///////////////////////////////////////////////////////////////
+        // KALEM SATIRI EKLE
+        ///////////////////////////////////////////////////////////////
+        function addKalemLine() {
+            let tbody = document.querySelector("#kalemTable tbody");
+            let tr = document.createElement("tr");
+            tr.innerHTML = `
+                <td><input class="form-control-custom stokKodu" placeholder="Stok" /></td>
+                <td><input class="form-control-custom depoKodu" value="10" style="width:60px;" /></td>
+                <td><input class="form-control-custom miktar" value="1" style="width:80px;" /></td>
+                <td><input class="form-control-custom bf" value="0" style="width:80px;" /></td>
+                <td class="tutar-cell">0.00</td>
+                <td><button type="button" class="btn-custom btn-danger-custom btnRemoveLine">X</button></td>
+            `;
+            tbody.appendChild(tr);
+            attachKalemHandlers();
+        }
+
+        ///////////////////////////////////////////////////////////////
+        // KALEM HANDLER'LARI (SİL, HESAPLA)
+        ///////////////////////////////////////////////////////////////
+        function attachKalemHandlers() {
+            // Silme butonları
+            document.querySelectorAll(".btnRemoveLine").forEach(btn => {
+                btn.onclick = function () {
+                    let tbody = document.querySelector("#kalemTable tbody");
+                    if (tbody.querySelectorAll("tr").length > 1) {
+                        this.closest("tr").remove();
+                    } else {
+                        alert("En az bir kalem satırı olmalıdır.");
+                    }
+                };
+            });
+
+            // Tutar hesaplama
+            document.querySelectorAll("#kalemTable tbody tr").forEach(tr => {
+                let miktarInput = tr.querySelector(".miktar");
+                let bfInput = tr.querySelector(".bf");
+                let tutarCell = tr.querySelector(".tutar-cell");
+
+                function calculate() {
+                    let miktar = parseFloat(miktarInput.value.replace(",", ".")) || 0;
+                    let bf = parseFloat(bfInput.value.replace(",", ".")) || 0;
+                    tutarCell.innerText = (miktar * bf).toFixed(2);
+                }
+
+                miktarInput.addEventListener("input", calculate);
+                bfInput.addEventListener("input", calculate);
+                calculate();
+            });
+        }
+
+        ///////////////////////////////////////////////////////////////
+        // SİPARİŞ OLUŞTUR
+        ///////////////////////////////////////////////////////////////
+        async function createOrder() {
+            let seri = document.getElementById("new_Seri").value.trim();
+            let fisNo = document.getElementById("new_FisNo").value.trim();
+            let cariKod = document.getElementById("new_CariKod").value.trim();
+            let tarih = document.getElementById("new_Tarih").value.trim();
+            let tesTarih = document.getElementById("new_TesTarih").value.trim();
+            let subeKodu = document.getElementById("new_SubeKodu").value.trim();
+            let ozelKod = document.getElementById("new_OzelKod").value.trim();
+
+            // Zorunlu alanlar
+            if (!seri || !fisNo || !cariKod || !tarih || !tesTarih) {
+                alert("❌ Zorunlu alanları doldurun (Seri, Fiş No, Cari, Tarih, Teslim Tarihi)");
+                return;
+            }
+
+            // Tarihleri formatla
+            let tarihFormatted = tarih + " 00:00:00";
+            let tesTarihFormatted = tesTarih + " 00:00:00";
+
+            // Kalemleri topla
+            let kalems = [];
+            document.querySelectorAll("#kalemTable tbody tr").forEach(tr => {
+                let stokKodu = tr.querySelector(".stokKodu").value.trim();
+                if (!stokKodu) return;
+
+                kalems.push({
+                    StokKodu: stokKodu,
+                    DEPO_KODU: parseInt(tr.querySelector(".depoKodu").value) || 10,
+                    STra_GCMIK: parseFloat(tr.querySelector(".miktar").value.replace(",", ".")) || 0,
+                    STra_BF: parseFloat(tr.querySelector(".bf").value.replace(",", ".")) || 0
+                });
+            });
+
+            if (kalems.length === 0) {
+                alert("❌ En az bir kalem girmelisiniz.");
+                return;
+            }
+
+            let payload = {
+                FaturaTip: 7,
+                Seri: seri,
+                SonNumaraYazilsin: false,
+                FatUst: {
+                    FATIRS_NO: fisNo,
+                    CariKod: cariKod,
+                    Tarih: tarihFormatted,
+                    Tes_Tarih: tesTarihFormatted,
+                    Sube_Kodu: parseInt(subeKodu) || 0,
+                    OZEL_KOD: ozelKod || "1",
+                    KDV_DAHILMI: true,
+                    Tip: 7,
+                    TIPI: 7,
+                    AMBHARTUR: 0
+                },
+                Kalems: kalems
+            };
+
+            try {
+                const response = await fetch('/MusteriSiparisi/Create', {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+
+                const res = await response.json();
+
+                if (res.IsSuccessful === true) {
+                    alert("✅ Sipariş başarıyla oluşturuldu!");
+                    
+                    // Formu temizle
+                    document.getElementById("new_FisNo").value = '';
+                    document.getElementById("new_CariKod").value = '';
+                    document.querySelector("#kalemTable tbody").innerHTML = `
+                        <tr>
+                            <td><input class="form-control-custom stokKodu" placeholder="Stok" /></td>
+                            <td><input class="form-control-custom depoKodu" value="10" style="width:60px;" /></td>
+                            <td><input class="form-control-custom miktar" value="1" style="width:80px;" /></td>
+                            <td><input class="form-control-custom bf" value="0" style="width:80px;" /></td>
+                            <td class="tutar-cell">0.00</td>
+                            <td><button type="button" class="btn-custom btn-danger-custom btnRemoveLine">X</button></td>
+                        </tr>
+                    `;
+                    attachKalemHandlers();
+
+                    // Listeyi yenile
+                    await loadOrderList();
+                } else {
+                    alert("❌ Sipariş oluşturulamadı: " + (res.ErrorDesc || "Bilinmeyen hata"));
+                }
+            } catch (err) {
+                console.error("❌ Hata:", err);
+                alert("Sipariş oluşturulurken hata oluştu!");
+            }
+        }
+
+        ///////////////////////////////////////////////////////////////
+        // SİPARİŞ LİSTESİNİ YÜK
+        ///////////////////////////////////////////////////////////////
+        async function loadOrderList() {
+            try {
+                const response = await fetch('/MusteriSiparisi/List?pageSize=100');
+                const html = await response.text();
+
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const rows = doc.querySelectorAll('.fisRow');
+
+                const container = document.getElementById('orderListContainer');
+
+                if (rows.length === 0) {
+                    container.innerHTML = '<div class="empty-state">Sipariş bulunamadı</div>';
+                    return;
+                }
+
+                let tableHtml = `
+                    <table class="table-custom">
+                        <thead>
+                            <tr>
+                                <th>Fiş No</th>
+                                <th>Cari</th>
+                                <th>Tarih</th>
+                                <th>Kalem</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                rows.forEach(row => {
+                    const fisNo = row.dataset.fisno;
+                    const cells = row.querySelectorAll('td');
+                    
+                    tableHtml += `
+                        <tr onclick="selectOrder('${fisNo}')" data-fisno="${fisNo}">
+                            <td><strong>${cells[0].textContent}</strong></td>
+                            <td>${cells[1].textContent}</td>
+                            <td>${cells[2].textContent}</td>
+                            <td>${cells[4].textContent}</td>
+                        </tr>
+                    `;
+                });
+
+                tableHtml += '</tbody></table>';
+                container.innerHTML = tableHtml;
+
+            } catch (err) {
+                console.error("❌ Liste yüklenemedi:", err);
+                document.getElementById('orderListContainer').innerHTML = 
+                    '<div class="empty-state">Hata: ' + err.message + '</div>';
+            }
+        }
+
+        ///////////////////////////////////////////////////////////////
+        // SİPARİŞ SEÇ VE DETAY GÖSTER
+        ///////////////////////////////////////////////////////////////
+        async function selectOrder(fisNo) {
+            selectedFisNo = fisNo;
+
+            // Seçili satırı vurgula
+            document.querySelectorAll('#orderListContainer tr').forEach(tr => {
+                tr.classList.remove('selected');
+            });
+            event.target.closest('tr').classList.add('selected');
+
+            const detailContainer = document.getElementById('orderDetailContainer');
+            detailContainer.innerHTML = '<div class="loading">Yükleniyor...</div>';
+
+            try {
+                const response = await fetch(`/MusteriSiparisi/GetFull?fisNo=${fisNo}`);
+                const json = await response.json();
+
+                if (!json.IsSuccessful) {
+                    detailContainer.innerHTML = '<div class="empty-state">Fiş bulunamadı</div>';
+                    return;
+                }
+
+                currentOrderData = json.Data;
+                displayOrderDetail(json.Data);
+
+            } catch (err) {
+                console.error("❌ Detay yüklenemedi:", err);
+                detailContainer.innerHTML = '<div class="empty-state">Hata oluştu</div>';
+            }
+        }
+
+        ///////////////////////////////////////////////////////////////
+        // SİPARİŞ DETAYINI GÖSTER
+        ///////////////////////////////////////////////////////////////
+        function displayOrderDetail(data) {
+            const container = document.getElementById('orderDetailContainer');
+
+            let html = `
+                <div style="background: var(--bg-hover); padding: 12px; border-radius: 6px; margin-bottom: 12px;">
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; font-size: 13px;">
+                        <div><strong>Fiş No:</strong> ${data.FatUst.FATIRS_NO}</div>
+                        <div><strong>Cari:</strong> ${data.FatUst.CariKod}</div>
+                        <div><strong>Tarih:</strong> ${data.FatUst.Tarih}</div>
+                        <div><strong>Teslim:</strong> ${data.FatUst.Tes_Tarih}</div>
+                    </div>
+                </div>
+
+                <h6 style="font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px;">
+                    KALEMLER
+                </h6>
+
+                <table class="table-custom">
+                    <thead>
+                        <tr>
+                            <th>Stok</th>
+                            <th>Miktar</th>
+                            <th>Fiyat</th>
+                            <th>Tutar</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            (data.Kalems || []).forEach(k => {
+                let miktar = parseFloat(k.STra_GCMIK || 0);
+                let fiyat = parseFloat(k.STra_BF || 0);
+                let tutar = (miktar * fiyat).toFixed(2);
+
+                html += `
+                    <tr data-inckey="${k.IncKeyNo}">
+                        <td>${k.StokKodu}</td>
+                        <td class="editable-cell" data-field="STra_GCMIK">${miktar.toFixed(2)}</td>
+                        <td class="editable-cell" data-field="STra_BF">${fiyat.toFixed(2)}</td>
+                        <td class="tutar-cell">${tutar}</td>
+                    </tr>
+                `;
+            });
+
+            html += '</tbody></table>';
+            container.innerHTML = html;
+
+            // Inline edit aktifleştir
+            activateInlineEdit();
+        }
+
+        ///////////////////////////////////////////////////////////////
+        // INLINE EDIT AKTIFLEŞTIR
+        ///////////////////////////////////////////////////////////////
+        function activateInlineEdit() {
+            document.querySelectorAll('.editable-cell').forEach(cell => {
+                cell.addEventListener('click', function() {
+                    if (this.querySelector('input')) return;
+
+                    const oldValue = this.innerText.trim();
+                    const input = document.createElement('input');
+                    input.classList.add('form-control-custom');
+                    input.value = oldValue;
+                    input.style.padding = '4px 8px';
+                    input.style.width = '80px';
+
+                    this.innerHTML = '';
+                    this.appendChild(input);
+                    input.focus();
+
+                    input.addEventListener('blur', () => saveCell(this, oldValue));
+                    input.addEventListener('keydown', e => {
+                        if (e.key === 'Enter') saveCell(this, oldValue);
+                        if (e.key === 'Escape') this.innerHTML = oldValue;
+                    });
+                });
+            });
+        }
+
+        ///////////////////////////////////////////////////////////////
+        // HÜCRE KAYDET
+        ///////////////////////////////////////////////////////////////
+        async function saveCell(cell, oldValue) {
+            const input = cell.querySelector('input');
+            const newValue = input.value.trim();
+
+            if (oldValue == newValue) {
+                cell.innerHTML = oldValue;
+                return;
+            }
+
+            const tr = cell.closest('tr');
+            const incKey = parseInt(tr.dataset.inckey);
+
+            // Veriyi güncelle
+            currentOrderData.Kalems.forEach(k => {
+                if (k.IncKeyNo === incKey) {
+                    k[cell.dataset.field] = parseFloat(newValue.replace(",", "."));
+                }
+            });
+
+            try {
+                const response = await fetch('/MusteriSiparisi/Save', {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(currentOrderData)
+                });
+
+                const res = await response.json();
+
+                if (res.IsSuccessful === true) {
+                    cell.innerHTML = newValue;
+                    cell.style.backgroundColor = '#d4edda';
+                    setTimeout(() => cell.style.backgroundColor = '', 600);
+
+                    // Tutarı güncelle
+                    let miktarCell = tr.querySelector('[data-field="STra_GCMIK"]');
+                    let fiyatCell = tr.querySelector('[data-field="STra_BF"]');
+                    let tutarCell = tr.querySelector('.tutar-cell');
+
+                    if (miktarCell && fiyatCell && tutarCell) {
+                        let miktar = parseFloat(miktarCell.innerText);
+                        let fiyat = parseFloat(fiyatCell.innerText);
+                        tutarCell.innerText = (miktar * fiyat).toFixed(2);
+                    }
+                } else {
+                    alert("❌ Kaydedilemedi: " + (res.ErrorDesc || "Bilinmeyen hata"));
+                    cell.innerHTML = oldValue;
+                }
+            } catch (err) {
+                console.error("❌ Kayıt hatası:", err);
+                alert("Kayıt sırasında hata oluştu!");
+                cell.innerHTML = oldValue;
+            }
+        }
+
+    </script>
+}

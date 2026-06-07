@@ -1,0 +1,260 @@
+﻿@using Newtonsoft.Json
+@model List<dynamic>
+
+@{
+    ViewData["Title"] = "İş Emri Yönetimi";
+}
+
+<style>
+    td.editable:hover {
+        background: #eef6ff;
+        cursor: pointer;
+    }
+    td.editing {
+        background: #fff3cd !important;
+    }
+</style>
+
+<div class="container mt-3">
+
+    <!-- MESAJLAR -->
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success">@TempData["Success"]</div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger">@TempData["Error"]</div>
+    }
+
+    <!-- ========================================================== -->
+    <!--  İŞ EMRİ OLUŞTURMA                                         -->
+    <!-- ========================================================== -->
+    <div class="card">
+        <div class="card-header">
+            <i class="bi bi-clipboard-check"></i> İş Emri Yönetimi
+        </div>
+        <div class="card-body">
+
+            <form asp-action="Create" asp-controller="ProductionOrder" method="post" class="row g-3">
+                @Html.AntiForgeryToken()
+
+                <div class="col-12">
+                    <label class="form-label">İş Emri No</label>
+                    <input name="IsEmriNo" class="form-control" required />
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Tarih</label>
+                    <input name="Tarih" type="date" class="form-control" required />
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Stok Kodu</label>
+                    <input name="StokKodu" class="form-control" required />
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Miktar</label>
+                    <input name="Miktar" type="number" step="0.001" class="form-control" required />
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Depo Kodu</label>
+                    <input name="DepoKodu" type="number" class="form-control" value="4000" required />
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Çıkış Depo</label>
+                    <input name="CikisDepoKodu" type="number" class="form-control" value="4000" required />
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Teslim Tarihi</label>
+                    <input name="TeslimTarihi" type="date" class="form-control" required />
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Sipariş No (Opsiyonel)</label>
+                    <input name="SiparisNo" class="form-control" placeholder="Boş bırakılabilir" />
+                </div>
+                <div class="col-12 mt-2">
+                    <button type="submit" class="btn btn-success w-100">
+                        ✓ İş Emri Oluştur
+                    </button>
+                </div>
+            </form>
+
+        </div>
+    </div>
+
+    <!-- ========================================================== -->
+    <!--  MEVCUT İŞ EMİRLERİ                                       -->
+    <!-- ========================================================== -->
+    <div class="mt-4">
+        <h6 class="text-muted">MEVCUT İŞ EMİRLERİ</h6>
+
+        @if (Model == null || !Model.Any())
+        {
+            <div class="text-center text-muted mt-3">
+                İş emri bulunamadı
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle" id="tblOrders">
+                    <thead class="table-light">
+                        <tr>
+                            <th>İş Emri No</th>
+                            <th>Tarih</th>
+                            <th>Stok Kodu</th>
+                            <th>Miktar</th>
+                            <th>Depo</th>
+                            <th>Çıkış Depo</th>
+                            <th>Teslim Tarihi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model)
+                        {
+                            <tr data-id="@item.IsEmriNo">
+
+                                <td>@item.IsEmriNo</td>
+
+                                <td class="editable" data-field="Tarih">@item.Tarih</td>
+
+                                <td class="editable" data-field="StokKodu">@item.StokKodu</td>
+
+                                <td class="editable" data-field="Miktar">@item.Miktar</td>
+
+                                <td class="editable" data-field="DepoKodu">@item.DepoKodu</td>
+
+                                <td class="editable" data-field="CikisDepoKodu">@item.CikisDepoKodu</td>
+
+                                <td class="editable" data-field="TeslimTarihi">@item.TeslimTarihi</td>
+
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- ========================================================== -->
+            <!--  SAYFALAMA                                                 -->
+            <!-- ========================================================== -->
+
+            <nav aria-label="Sayfalama" class="mt-2">
+                <ul class="pagination pagination-sm">
+
+                    @{
+                        int page = ViewBag.Page ?? 1;
+                        int pageSize = ViewBag.PageSize ?? 10;
+                        int total = ViewBag.TotalCount ?? 0;
+                        int maxPage = (int)Math.Ceiling(total / (double)pageSize);
+                    }
+
+                    <li class="page-item @(page <= 1 ? "disabled" : "")">
+                        <a class="page-link" href="@Url.Action("Index", new { page = page - 1, pageSize })">Önceki</a>
+                    </li>
+
+                    <li class="page-item disabled">
+                        <span class="page-link">
+                            @@page / @(maxPage == 0 ? 1 : maxPage)
+                        </span>
+                    </li>
+
+                    <li class="page-item @(page >= maxPage ? "disabled" : "")">
+                        <a class="page-link" href="@Url.Action("Index", new { page = page + 1, pageSize })">Sonraki</a>
+                    </li>
+
+                </ul>
+            </nav>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+
+        document.addEventListener("DOMContentLoaded", attachInlineEdit);
+
+        function attachInlineEdit() {
+            document.querySelectorAll(".editable").forEach(cell => {
+                cell.onclick = function () {
+                    if (cell.querySelector("input")) return;
+
+                    const oldValue = cell.innerText.trim();
+                    const field = cell.dataset.field;
+                    const row = cell.closest("tr");
+                    const id = row.dataset.id;
+
+                    const input = document.createElement("input");
+                    input.classList = "form-control form-control-sm";
+                    input.value = oldValue;
+
+                    cell.innerHTML = "";
+                    cell.appendChild(input);
+                    input.focus();
+
+                    input.addEventListener("blur", () => saveCell(id, field, oldValue, input.value, cell));
+                    input.addEventListener("keydown", e => {
+                        if (e.key === "Enter") saveCell(id, field, oldValue, input.value, cell);
+                        if (e.key === "Escape") cell.innerHTML = oldValue;
+                    });
+                };
+            });
+        }
+
+        async function saveCell(id, field, oldValue, newValue, cell) {
+            if (newValue === oldValue) {
+                cell.innerHTML = oldValue;
+                return;
+            }
+
+            const row = cell.closest("tr");
+            const Tarih = row.children[1].innerText.trim();
+            const StokKodu = row.children[2].innerText.trim();
+            const Miktar = row.children[3].innerText.trim();
+            const DepoKodu = row.children[4].innerText.trim();
+            const CikisDepoKodu = row.children[5].innerText.trim();
+            const TeslimTarihi = row.children[6].innerText.trim();
+
+            const keyVal = {
+                "Miktar": Miktar,
+                "DepoKodu": DepoKodu,
+                "CikisDepoKodu": CikisDepoKodu,
+                "Tarih": Tarih,
+                "TeslimTarihi": TeslimTarihi
+            };
+
+            keyVal[field] = newValue;
+
+            const dto = {
+                IsEmriNo: id,
+                Tarih: keyVal.Tarih,
+                StokKodu: StokKodu,
+                Miktar: parseFloat(keyVal.Miktar),
+                DepoKodu: parseInt(keyVal.DepoKodu),
+                CikisDepoKodu: parseInt(keyVal.CikisDepoKodu),
+                TeslimTarihi: keyVal.TeslimTarihi
+            };
+
+            const resp = await fetch("/ProductionOrder/Update", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(dto)
+            });
+
+            if (resp.ok) {
+                cell.innerHTML = newValue;
+                cell.style.background = "#d4edda";
+                setTimeout(() => cell.style.background = "", 600);
+            } else {
+                alert("Güncellenemedi");
+                cell.innerHTML = oldValue;
+            }
+        }
+
+    </script>
+}
+

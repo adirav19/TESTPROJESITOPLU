@@ -1,0 +1,486 @@
+@{
+    ViewData["Title"] = "Hızlı Tahsilat Girişi";
+}
+
+<div class="container mt-4">
+    <h2 class="mb-3">💰 Hızlı Tahsilat Girişi</h2>
+
+    <div id="msg" class="alert d-none" role="alert"></div>
+
+    <!-- HEADER -->
+    <div class="card mb-3">
+        <div class="card-body row g-3">
+            <div class="col-md-3">
+                <label class="form-label">Kasa Kodu</label>
+                <input id="kasaKod" class="form-control" placeholder="01" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Cari Kodu</label>
+                <input id="cariKod" class="form-control" placeholder="120-01-063" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Belge No</label>
+                <input id="belgeNo" class="form-control" placeholder="000000000000001" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">İşlem Tarihi</label>
+                <input id="islemTarihi" type="date" class="form-control" />
+            </div>
+        </div>
+        <div class="card-footer d-flex justify-content-between">
+            <div>
+                <button id="btnNew" class="btn btn-outline-secondary btn-sm">🆕 Yeni Boş Belge</button>
+            </div>
+            <div>
+                <button id="btnGet" class="btn btn-primary btn-sm me-2">🔍 Belge Getir</button>
+                <button id="btnDelete" class="btn btn-danger btn-sm">🗑 Belge Sil</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- LİNE TABLOSU -->
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span class="fw-bold">Tahsilat Satırları</span>
+            <button id="btnAddLine" class="btn btn-success btn-sm">➕ Satır Ekle</button>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table id="linesTable" class="table table-sm table-bordered mb-0 align-middle">
+                    <thead class="table-light text-center">
+                        <tr>
+                            <th>SozKodu</th>
+                            <th>Tutar</th>
+                            <th>Referans</th>
+                            <th>PLA_KODU</th>
+                            <th>Proje_Kodu</th>
+                            <th>TaksitSay</th>
+                            <th>DovTutar</th>
+                            <th>Kur</th>
+                            <th>KartNo</th>
+                            <th>CRapKod1</th>
+                            <th>CRapKod2</th>
+                            <th>Aciklama</th>
+                            <th>TahsilatTipi</th>
+                            <th>KasaKod</th>
+                            <th style="width:40px;">❌</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-center">
+                        <tr class="no-row">
+                            <td colspan="15" class="text-muted">Satır yok. "Satır Ekle" butonuyla yeni satır ekleyin.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card-footer text-end">
+            <button id="btnSave" class="btn btn-primary">💾 Yeni Belge Kaydet</button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+
+            const msg = document.getElementById("msg");
+            const kasaKod = document.getElementById("kasaKod");
+            const cariKod = document.getElementById("cariKod");
+            const belgeNo = document.getElementById("belgeNo");
+            const islemTarihi = document.getElementById("islemTarihi");
+
+            const btnNew = document.getElementById("btnNew");
+            const btnGet = document.getElementById("btnGet");
+            const btnDelete = document.getElementById("btnDelete");
+            const btnAddLine = document.getElementById("btnAddLine");
+            const btnSave = document.getElementById("btnSave");
+
+            const linesTableBody = document.querySelector("#linesTable tbody");
+
+            function showMessage(text, type) {
+                msg.textContent = text;
+                msg.className = "alert alert-" + type;
+                msg.classList.remove("d-none");
+                setTimeout(() => msg.classList.add("d-none"), 3000);
+            }
+
+            function clearLines() {
+                linesTableBody.innerHTML = `
+                    <tr class="no-row">
+                        <td colspan="15" class="text-muted">Satır yok. "Satır Ekle" butonuyla yeni satır ekleyin.</td>
+                    </tr>`;
+            }
+
+            function addLine(line) {
+                // no-row varsa sil
+                const emptyRow = linesTableBody.querySelector(".no-row");
+                if (emptyRow) emptyRow.remove();
+
+                const tr = document.createElement("tr");
+                tr.classList.add("pay-row");
+
+                const def = line || {
+                    sozKodu: "NAKİT",
+                    tutar: 0,
+                    referans_Kodu: "",
+                    plA_KODU: "",
+                    proje_Kodu: "",
+                    taksitSay: 0,
+                    dovTutar: 0,
+                    kur: 0,
+                    kartNo: "",
+                    cRapKod1: "",
+                    cRapKod2: "",
+                    aciklama: "",
+                    tahsilatTipi: 0,
+                    kasaKod: kasaKod.value || ""
+                };
+
+                tr.innerHTML = `
+                    <td data-col="SozKodu" contenteditable="true">${def.sozKodu}</td>
+                    <td data-col="Tutar" contenteditable="true" class="cell-tutar" data-old="${def.tutar}">${def.tutar}</td>
+                    <td data-col="Referans_Kodu" contenteditable="true">${def.referans_Kodu}</td>
+                    <td data-col="PLA_KODU" contenteditable="true">${def.plA_KODU}</td>
+                    <td data-col="Proje_Kodu" contenteditable="true">${def.proje_Kodu}</td>
+                    <td data-col="TaksitSay" contenteditable="true">${def.taksitSay}</td>
+                    <td data-col="DovTutar" contenteditable="true">${def.dovTutar}</td>
+                    <td data-col="Kur" contenteditable="true">${def.kur}</td>
+                    <td data-col="KartNo" contenteditable="true">${def.kartNo}</td>
+                    <td data-col="CRapKod1" contenteditable="true">${def.cRapKod1}</td>
+                    <td data-col="CRapKod2" contenteditable="true">${def.cRapKod2}</td>
+                    <td data-col="Aciklama" contenteditable="true">${def.aciklama}</td>
+                    <td data-col="TahsilatTipi" contenteditable="true">${def.tahsilatTipi}</td>
+                    <td data-col="KasaKod" contenteditable="true">${def.kasaKod}</td>
+                    <td>
+                        <button type="button" class="btn btn-outline-danger btn-sm btn-remove-line">X</button>
+                    </td>
+                `;
+
+                linesTableBody.appendChild(tr);
+            }
+
+            function collectModel() {
+                const header = {
+                    kasaKod: kasaKod.value.trim(),
+                    cariKod: cariKod.value.trim(),
+                    belgeNo: belgeNo.value.trim(),
+                    islemTarihi: islemTarihi.value,
+                    DOVTIP: 0
+                };
+
+                const tahsilats = [];
+                linesTableBody.querySelectorAll(".pay-row").forEach(tr => {
+                    const get = col =>
+                        (tr.querySelector(`td[data-col='${col}']`)?.textContent || "").trim();
+
+                    const num = col => {
+                        const raw = get(col).replace(",", ".");
+                        const v = parseFloat(raw);
+                        return isNaN(v) ? 0 : v;
+                    };
+
+                    tahsilats.push({
+                        SozKodu: get("SozKodu"),
+                        TaksitSay: parseInt(get("TaksitSay")) || 0,
+                        DovTutar: num("DovTutar"),
+                        Kur: num("Kur"),
+                        Tutar: num("Tutar"),
+                        KartNo: get("KartNo"),
+                        CRapKod1: get("CRapKod1"),
+                        CRapKod2: get("CRapKod2"),
+                        PLA_KODU: get("PLA_KODU"),
+                        Proje_Kodu: get("Proje_Kodu"),
+                        Referans_Kodu: get("Referans_Kodu"),
+                        Entegrefkey: "",
+                        Aciklama: get("Aciklama"),
+                        KasaKod: get("KasaKod"),
+                        TahsilatTipi: parseInt(get("TahsilatTipi")) || 0
+                    });
+                });
+
+                return { header, tahsilats };
+            }
+
+            // Yeni boş belge
+            btnNew.addEventListener("click", () => {
+                cariKod.value = "";
+                belgeNo.value = "";
+                if (!islemTarihi.value) {
+                    const today = new Date().toISOString().substring(0, 10);
+                    islemTarihi.value = today;
+                }
+                clearLines();
+                showMessage("Yeni belge için ekran temizlendi.", "info");
+            });
+
+            // Belge Getir
+            btnGet.addEventListener("click", async () => {
+                const h = {
+                    KasaKod: kasaKod.value.trim(),
+                    CariKod: cariKod.value.trim(),
+                    BelgeNo: belgeNo.value.trim(),
+                    IslemTarihi: islemTarihi.value
+                };
+
+                if (!h.KasaKod || !h.CariKod || !h.BelgeNo || !h.IslemTarihi) {
+                    showMessage("Kasa, Cari, Belge No ve Tarih zorunludur.", "warning");
+                    return;
+                }
+
+                try {
+                    const res = await fetch("/FastPayment/GetDetails", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(h)
+                    });
+
+                    const json = await res.json();
+                    if (!json.success) {
+                        showMessage(json.message || "Belge bulunamadı.", "danger");
+                        clearLines();
+                        return;
+                    }
+
+                    const data = json.data;
+
+                    // Header'ı server'dan güncelle
+                    kasaKod.value = data.kasaKod;
+                    cariKod.value = data.cariKod;
+                    belgeNo.value = data.belgeNo;
+
+                    if (data.islemTarihi)
+                        islemTarihi.value = data.islemTarihi.substring(0, 10);
+
+                    clearLines();
+
+                    if (!data.tahsilats || data.tahsilats.length === 0) {
+                        showMessage("Belge var fakat satır bulunamadı.", "info");
+                        return;
+                    }
+
+                    data.tahsilats.forEach(x => {
+                        addLine({
+                            sozKodu: x.sozKodu,
+                            tutar: x.tutar,
+                            referans_Kodu: x.referans_Kodu,
+                            plA_KODU: x.plA_KODU,
+                            proje_Kodu: x.proje_Kodu,
+                            taksitSay: x.taksitSay,
+                            dovTutar: x.dovTutar,
+                            kur: x.kur,
+                            kartNo: x.kartNo,
+                            cRapKod1: x.cRapKod1,
+                            cRapKod2: x.cRapKod2,
+                            aciklama: x.aciklama,
+                            tahsilatTipi: x.tahsilatTipi,
+                            kasaKod: x.kasaKod
+                        });
+                    });
+
+                    showMessage("Belge başarıyla getirildi.", "success");
+
+                } catch (err) {
+                    console.error(err);
+                    showMessage("Belge getirirken hata oluştu.", "danger");
+                }
+            });
+
+            // Satır ekle
+            btnAddLine.addEventListener("click", () => {
+                addLine();
+            });
+
+            // Satır sil
+            linesTableBody.addEventListener("click", (e) => {
+                if (e.target.classList.contains("btn-remove-line")) {
+                    const tr = e.target.closest("tr");
+                    tr.remove();
+
+                    if (linesTableBody.querySelectorAll(".pay-row").length === 0) {
+                        clearLines();
+                    }
+                }
+            });
+
+            // Yeni belge kaydet
+            btnSave.addEventListener("click", async () => {
+                const model = collectModel();
+
+                if (!model.header.kasaKod || !model.header.cariKod ||
+                    !model.header.belgeNo || !model.header.islemTarihi) {
+                    showMessage("Kasa, Cari, Belge No ve Tarih zorunludur.", "warning");
+                    return;
+                }
+
+                if (!model.tahsilats || model.tahsilats.length === 0) {
+                    showMessage("En az bir tahsilat satırı girilmelidir.", "warning");
+                    return;
+                }
+
+                try {
+                    const payload = {
+                        KasaKod: model.header.kasaKod,
+                        CariKod: model.header.cariKod,
+                        BelgeNo: model.header.belgeNo,
+                        IslemTarihi: model.header.islemTarihi,
+                        DOVTIP: model.header.DOVTIP,
+                        Tahsilats: model.tahsilats
+                    };
+
+                    const res = await fetch("/FastPayment/Create", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(payload)
+                    });
+
+                    const json = await res.json();
+                    if (!json.success) {
+                        showMessage(json.message || "Kayıt oluşturulamadı.", "danger");
+                        return;
+                    }
+
+                    showMessage(json.message || "Kayıt başarıyla oluşturuldu.", "success");
+                } catch (err) {
+                    console.error(err);
+                    showMessage("Kayıt sırasında hata oluştu.", "danger");
+                }
+            });
+
+            // Belge sil
+            btnDelete.addEventListener("click", async () => {
+                const h = {
+                    KasaKod: kasaKod.value.trim(),
+                    CariKod: cariKod.value.trim(),
+                    BelgeNo: belgeNo.value.trim(),
+                    IslemTarihi: islemTarihi.value
+                };
+
+                if (!h.KasaKod || !h.CariKod || !h.BelgeNo || !h.IslemTarihi) {
+                    showMessage("Silmek için Kasa, Cari, Belge No ve Tarih zorunludur.", "warning");
+                    return;
+                }
+
+                if (!confirm("Bu belgeyi silmek istediğinize emin misiniz?")) {
+                    return;
+                }
+
+                try {
+                    const res = await fetch("/FastPayment/Delete", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(h)
+                    });
+
+                    const json = await res.json();
+                    if (!json.success) {
+                        showMessage(json.message || "Belge silinemedi.", "danger");
+                        return;
+                    }
+
+                    showMessage(json.message || "Belge silindi.", "success");
+                    clearLines();
+                } catch (err) {
+                    console.error(err);
+                    showMessage("Silme sırasında hata oluştu.", "danger");
+                }
+            });
+
+            // INLINE TUTAR GÜNCELLEME
+            linesTableBody.addEventListener("focusin", (e) => {
+                const td = e.target.closest(".cell-tutar");
+                if (!td) return;
+                
+                const raw = (td.textContent || "").trim().replace(",", ".");
+                const v = parseFloat(raw);
+                td.dataset.old = isNaN(v) ? "0" : v.toString();
+            });
+
+            linesTableBody.addEventListener("focusout", async (e) => {
+                const td = e.target.closest(".cell-tutar");
+                if (!td) return;
+
+                const tr = td.closest(".pay-row");
+                if (!tr) return;
+
+                // Header bilgilerini topla
+                const headerData = {
+                    kasaKod: kasaKod.value.trim(),
+                    cariKod: cariKod.value.trim(),
+                    belgeNo: belgeNo.value.trim(),
+                    islemTarihi: islemTarihi.value
+                };
+
+                if (!headerData.kasaKod || !headerData.cariKod || !headerData.belgeNo || !headerData.islemTarihi) {
+                    return;
+                }
+
+                const rawNew = (td.textContent || "").trim().replace(",", ".");
+                let newVal = parseFloat(rawNew);
+                if (isNaN(newVal)) newVal = 0;
+
+                const oldVal = parseFloat(td.dataset.old || "0");
+
+                // Hücreyi formatla
+                td.textContent = newVal.toFixed(2);
+
+                if (newVal === oldVal) {
+                    return;
+                }
+
+                // Referans kodunu satırdan çek
+                const refTd = tr.querySelector("td[data-col='Referans_Kodu']");
+                const referans = (refTd?.textContent || "").trim();
+
+                if (!referans) {
+                    showMessage("Referans Kodu olmadan satır güncellenemez.", "warning");
+                    return;
+                }
+
+                const dto = {
+                    KasaKod: headerData.kasaKod,
+                    CariKod: headerData.cariKod,
+                    BelgeNo: headerData.belgeNo,
+                    IslemTarihi: headerData.islemTarihi,
+                    Referans_Kodu: referans,
+                    EskiTutar: oldVal,
+                    YeniTutar: newVal
+                };
+
+                try {
+                    const res = await fetch("/FastPayment/UpdateLine", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(dto)
+                    });
+
+                    const json = await res.json();
+
+                    if (json.success) {
+                        td.style.backgroundColor = "#d4edda";
+                        showMessage(json.message || "Tutar güncellendi.", "success");
+                    } else {
+                        td.style.backgroundColor = "#f8d7da";
+                        showMessage(json.message || "Tutar güncellenemedi.", "danger");
+                        td.textContent = oldVal.toFixed(2);
+                    }
+
+                    setTimeout(() => td.style.backgroundColor = "", 1000);
+                } catch (err) {
+                    console.error(err);
+                    td.style.backgroundColor = "#f8d7da";
+                    showMessage("Satır güncellenirken hata oluştu.", "danger");
+                    td.textContent = oldVal.toFixed(2);
+                    setTimeout(() => td.style.backgroundColor = "", 1000);
+                }
+            });
+
+            // Sayfa ilk açıldığında tarih bugün olsun
+            if (!islemTarihi.value) {
+                const today = new Date().toISOString().substring(0, 10);
+                islemTarihi.value = today;
+            }
+        });
+    </script>
+}
+</document_content>

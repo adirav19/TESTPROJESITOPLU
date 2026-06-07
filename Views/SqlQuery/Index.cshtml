@@ -1,0 +1,515 @@
+@{
+    ViewData["Title"] = "SQL Sorgu Aracı";
+}
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>@ViewData["Title"]</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f5f7;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+            .header h1 {
+                font-size: 28px;
+                font-weight: 600;
+                margin-bottom: 8px;
+            }
+
+            .header p {
+                opacity: 0.9;
+                font-size: 14px;
+            }
+
+        .content {
+            padding: 30px;
+        }
+
+        .query-section {
+            margin-bottom: 30px;
+        }
+
+        .quick-queries {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .quick-query-btn {
+            padding: 8px 16px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+            .quick-query-btn:hover {
+                background: #667eea;
+                color: white;
+                border-color: #667eea;
+            }
+
+        .sql-editor {
+            position: relative;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 200px;
+            padding: 15px;
+            border: 2px solid #e1e4e8;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            resize: vertical;
+            transition: border-color 0.2s;
+        }
+
+            textarea:focus {
+                outline: none;
+                border-color: #667eea;
+            }
+
+        .button-group {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+            .btn-primary:hover {
+                background: #5568d3;
+            }
+
+        .btn-secondary {
+            background: #f1f3f5;
+            color: #495057;
+        }
+
+            .btn-secondary:hover {
+                background: #e9ecef;
+            }
+
+        .results-section {
+            margin-top: 30px;
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e1e4e8;
+        }
+
+            .results-header h3 {
+                font-size: 18px;
+                color: #212529;
+            }
+
+        .result-count {
+            font-size: 13px;
+            color: #6c757d;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            border: 1px solid #e1e4e8;
+            border-radius: 8px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        th {
+            background: #f8f9fa;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #495057;
+            border-bottom: 2px solid #dee2e6;
+            position: sticky;
+            top: 0;
+        }
+
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        tr:hover {
+            background: #f8f9fa;
+        }
+
+        .alert {
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @@keyframes spin {
+            0%
+
+        {
+            transform: rotate(0deg);
+        }
+
+        100% {
+            transform: rotate(360deg);
+        }
+
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 60px 20px;
+            color: #6c757d;
+        }
+
+            .no-results svg {
+                width: 64px;
+                height: 64px;
+                margin-bottom: 15px;
+                opacity: 0.5;
+            }
+
+        .json-view {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 SQL Sorgu Aracı</h1>
+            <p>NetOpenX API üzerinden SQL sorguları çalıştırın</p>
+        </div>
+
+        <div class="content">
+            <div class="query-section">
+                <div class="quick-queries">
+                    <strong style="margin-right: 10px;">Hızlı Sorgular:</strong>
+                    <button class="quick-query-btn" onclick="setQuery('SELECT * FROM TBLCASABIT')">TBLCASABIT</button>
+                    <button class="quick-query-btn" onclick="setQuery('SELECT TOP 10 * FROM TBLSTKOD')">TBLSTKOD</button>
+                    <button class="quick-query-btn" onclick="setQuery('SELECT TOP 10 * FROM TBLSTHAR')">TBLSTHAR</button>
+                    <button class="quick-query-btn" onclick="setQuery('SELECT * FROM TBLDEPOLAR')">TBLDEPOLAR</button>
+                </div>
+
+                <div class="sql-editor">
+                    <textarea id="sqlQuery" placeholder="SELECT * FROM TBLCASABIT">SELECT * FROM TBLCASABIT</textarea>
+                </div>
+
+                <div class="button-group">
+                    <button class="btn-primary" onclick="executeQuery()">
+                        ▶ Sorguyu Çalıştır
+                    </button>
+                    <button class="btn-secondary" onclick="clearQuery()">
+                        Temizle
+                    </button>
+                </div>
+            </div>
+
+            <div id="alertBox"></div>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Sorgu çalıştırılıyor...</p>
+            </div>
+
+            <div class="results-section" id="resultsSection" style="display: none;">
+                <div class="results-header">
+                    <h3>📊 Sonuçlar</h3>
+                    <span class="result-count" id="resultCount"></span>
+                </div>
+                <div class="table-container">
+                    <table id="resultsTable">
+                        <thead id="tableHead"></thead>
+                        <tbody id="tableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="no-results" id="noResults">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <p>Henüz sorgu çalıştırılmadı</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function setQuery(sql) {
+            document.getElementById('sqlQuery').value = sql;
+        }
+
+        function clearQuery() {
+            document.getElementById('sqlQuery').value = '';
+            document.getElementById('resultsSection').style.display = 'none';
+            document.getElementById('noResults').style.display = 'block';
+            document.getElementById('alertBox').innerHTML = '';
+        }
+
+        async function executeQuery() {
+            const sql = document.getElementById('sqlQuery').value.trim();
+
+            if (!sql) {
+                showAlert('Lütfen bir SQL sorgusu girin', 'error');
+                return;
+            }
+
+            const loading = document.getElementById('loading');
+            const resultsSection = document.getElementById('resultsSection');
+            const noResults = document.getElementById('noResults');
+            const alertBox = document.getElementById('alertBox');
+
+            loading.style.display = 'block';
+            resultsSection.style.display = 'none';
+            noResults.style.display = 'none';
+            alertBox.innerHTML = '';
+
+            try {
+                const response = await fetch('/SqlQuery/Execute', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ TSql: sql })
+                });
+
+                const result = await response.json();
+
+                console.log('Full Response:', result);
+                console.log('Success:', result.success);
+                console.log('Data:', result.data);
+
+                if (!response.ok || !result.success) {
+                    throw new Error(result.message || 'Sorgu çalıştırılamadı');
+                }
+
+                displayResults(result.data);
+                showAlert('✓ Sorgu başarıyla çalıştırıldı', 'success');
+
+            } catch (error) {
+                console.error('Error:', error);
+                showAlert('✗ Hata: ' + error.message, 'error');
+                noResults.style.display = 'block';
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+
+        function displayResults(data) {
+            const resultsSection = document.getElementById('resultsSection');
+            const tableHead = document.getElementById('tableHead');
+            const tableBody = document.getElementById('tableBody');
+            const resultCount = document.getElementById('resultCount');
+
+            console.log('API Response:', data);
+
+            let records = [];
+
+            // NetOpenX API'den gelen veriyi parse et
+            if (data && typeof data === 'object') {
+
+                // 1. Durum: Data doğrudan array
+                if (Array.isArray(data)) {
+                    records = data;
+                }
+                // 2. Durum: IsSuccessful + Data yapısı
+                else if (data.IsSuccessful && data.Data) {
+                    if (Array.isArray(data.Data)) {
+                        records = data.Data;
+                    } else {
+                        records = [data.Data];
+                    }
+                }
+                // 3. Durum: Direkt Data property'si var
+                else if (data.Data) {
+                    if (Array.isArray(data.Data)) {
+                        records = data.Data;
+                    } else {
+                        records = [data.Data];
+                    }
+                }
+                // 4. Durum: Tek obje gelmiş
+                else {
+                    // İlk property'ye bak
+                    const keys = Object.keys(data);
+                    if (keys.length > 0) {
+                        const firstValue = data[keys[0]];
+                        if (Array.isArray(firstValue)) {
+                            records = firstValue;
+                        } else {
+                            records = [data];
+                        }
+                    }
+                }
+            }
+
+            console.log('Parsed Records:', records);
+
+            if (!records || records.length === 0) {
+                document.getElementById('noResults').style.display = 'block';
+                showAlert('Sonuç bulunamadı', 'error');
+                return;
+            }
+
+            // Başlıkları oluştur
+            const columns = Object.keys(records[0]);
+            tableHead.innerHTML = '<tr>' + columns.map(col => `<th>${escapeHtml(col)}</th>`).join('') + '</tr>';
+
+            // Satırları oluştur
+            tableBody.innerHTML = records.map(row => {
+                return '<tr>' + columns.map(col => {
+                    let value = row[col];
+
+                    // Null/undefined kontrolü
+                    if (value === null || value === undefined) {
+                        value = '<span style="color: #999; font-style: italic;">NULL</span>';
+                    }
+                    // Tarih kontrolü
+                    else if (typeof value === 'string' && value.match(/^\d{4}-\d{2}-\d{2}/)) {
+                        const date = new Date(value);
+                        if (!isNaN(date.getTime())) {
+                            value = date.toLocaleString('tr-TR');
+                        }
+                    }
+                    // Boolean kontrolü
+                    else if (typeof value === 'boolean') {
+                        value = value ? '✓' : '✗';
+                    }
+                    // Sayı kontrolü (format)
+                    else if (typeof value === 'number') {
+                        value = value.toLocaleString('tr-TR');
+                    }
+                    // Uzun text kontrolü
+                    else if (typeof value === 'string' && value.length > 100) {
+                        value = `<span title="${escapeHtml(value)}">${escapeHtml(value.substring(0, 100))}...</span>`;
+                    }
+                    else {
+                        value = escapeHtml(String(value));
+                    }
+
+                    return `<td>${value}</td>`;
+                }).join('') + '</tr>';
+            }).join('');
+
+            resultCount.textContent = `${records.length} kayıt`;
+            resultsSection.style.display = 'block';
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function showAlert(message, type) {
+            const alertBox = document.getElementById('alertBox');
+            const alertClass = type === 'error' ? 'alert-error' : 'alert-success';
+            alertBox.innerHTML = `<div class="alert ${alertClass}">${message}</div>`;
+
+            setTimeout(() => {
+                alertBox.innerHTML = '';
+            }, 5000);
+        }
+
+        // Enter tuşu ile çalıştırma (Ctrl+Enter)
+        document.getElementById('sqlQuery').addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'Enter') {
+                executeQuery();
+            }
+        });
+    </script>
+</body>
+</html>

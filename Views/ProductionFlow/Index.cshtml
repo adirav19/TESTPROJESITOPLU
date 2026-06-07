@@ -1,0 +1,322 @@
+﻿@model IEnumerable<dynamic>
+
+<h2>Üretim Akış Kontrol (UAK)</h2>
+
+<form method="get" class="mb-3">
+    <label>İş Emri No:</label>
+    <input type="text" name="isEmriNo" class="form-control" style="width:200px;display:inline-block;" />
+    <button class="btn btn-primary">Ara</button>
+</form>
+
+@if (Model == null)
+{
+    <p>İş emri giriniz...</p>
+    return;
+}
+
+<button class="btn btn-success mb-3" id="btnUSK">USK Fişi Oluştur</button>
+
+<table class="table table-bordered table-striped">
+    <thead class="table-dark">
+        <tr>
+            <th>İş Emri</th>
+            <th>Operasyon</th>
+            <th>İstasyon</th>
+            <th>Miktar</th>
+            <th>Fire</th>
+            <th>Başlangıç</th>
+            <th>Bitiş</th>
+        </tr>
+    </thead>
+
+    <tbody>
+
+        @foreach (var u in Model)
+        {
+            string isEmri = u.IsEmriNo;
+            string conf = u.CONFSIRANO;
+
+            <tr class="uakRow" data-isemri="@isEmri" data-conf="@conf">
+                <td>@u.IsEmriNo</td>
+                <td>@u.OpKodu</td>
+                <td>@u.IstasyonKodu</td>
+                <td>@u.URETILENMIKTAR</td>
+                <td>@u.FIREMIKTAR</td>
+                <td>@u.BASLANGICTARIH</td>
+                <td>@u.BITISTARIHSAAT</td>
+            </tr>
+
+            <tr class="detailRow" style="display:none;">
+                <td colspan="7">
+
+                    <pre class="jsonHolder" style="display:none;"></pre>
+
+                    <h5>UAK Bilgileri</h5>
+                    <table class="table table-sm table-bordered mainTable"></table>
+
+                    <h5 class="mt-3">Fire Detayları</h5>
+                    <table class="table table-sm table-bordered fireTable"></table>
+
+                    <h5 class="mt-3">Kaynak Detayları</h5>
+                    <table class="table table-sm table-bordered kaynakTable"></table>
+
+                </td>
+            </tr>
+        }
+
+    </tbody>
+</table>
+
+<script>
+    document.querySelectorAll(".uakRow").forEach(row => {
+        row.addEventListener("click", function () {
+
+            let isemri = this.dataset.isemri;
+            let conf = this.dataset.conf;
+            let detailRow = this.nextElementSibling;
+
+            if (detailRow.style.display === "none") {
+                detailRow.style.display = "";
+
+                fetch(`/ProductionFlow/GetUAK?isEmriNo=${isemri}&conf=${conf}`)
+                    .then(r => r.json())
+                    .then(full => {
+
+                        detailRow.querySelector(".jsonHolder").innerText = JSON.stringify(full);
+
+                        renderMain(full, detailRow.querySelector(".mainTable"));
+                        renderFire(full, detailRow.querySelector(".fireTable"));
+                        renderKaynak(full, detailRow.querySelector(".kaynakTable"));
+                    });
+
+            } else {
+                detailRow.style.display = "none";
+            }
+        });
+    });
+
+    function renderMain(full, table) {
+
+        table.innerHTML = `
+            <tr><th>Stok</th><td class="editable" data-field="StokKodu">${full.StokKodu ?? ""}</td></tr>
+            <tr><th>Operasyon</th><td class="editable" data-field="OpKodu">${full.OpKodu ?? ""}</td></tr>
+            <tr><th>OPSIRANO</th><td class="editable" data-field="OPSIRANO">${full.OPSIRANO ?? ""}</td></tr>
+            <tr><th>İstasyon</th><td class="editable" data-field="IstasyonKodu">${full.IstasyonKodu ?? ""}</td></tr>
+            <tr><th>Başlangıç</th><td class="editable" data-field="BASLANGICTARIH">${full.BASLANGICTARIH ?? ""}</td></tr>
+            <tr><th>Bitiş</th><td class="editable" data-field="BITISTARIHSAAT">${full.BITISTARIHSAAT ?? ""}</td></tr>
+            <tr><th>Vardiya</th><td class="editable" data-field="BASLANGICVARDIYA">${full.BASLANGICVARDIYA ?? ""}</td></tr>
+            <tr><th>Miktar</th><td class="editable" data-field="URETILENMIKTAR">${full.URETILENMIKTAR ?? ""}</td></tr>
+            <tr><th>Fire</th><td class="editable" data-field="FIREMIKTAR">${full.FIREMIKTAR ?? ""}</td></tr>
+            <tr><th>Depo</th><td class="editable" data-field="USKDEPOKODU">${full.USKDEPOKODU ?? ""}</td></tr>
+        `;
+
+        activateInline(table);
+    }
+
+    function renderFire(full, table) {
+
+        let list = full.ShrinkageDetailList || [];
+
+        let html = `
+            <tr class="table-dark">
+                <th>Fire Kodu</th>
+                <th>Miktar</th>
+                <th>Açıklama</th>
+            </tr>
+        `;
+
+        list.forEach((f, i) => {
+            html += `
+                <tr>
+                    <td class="editable-fire" data-index="${i}" data-field="FireKodu">${f.FireKodu ?? ""}</td>
+                    <td class="editable-fire" data-index="${i}" data-field="Miktar">${f.Miktar ?? ""}</td>
+                    <td class="editable-fire" data-index="${i}" data-field="FireAck">${f.FireAck ?? ""}</td>
+                </tr>
+            `;
+        });
+
+        table.innerHTML = html;
+        activateInlineFire(table);
+    }
+
+    function renderKaynak(full, table) {
+
+        let list = full.UAKKaynakLists || [];
+
+        let html = `
+            <tr class="table-dark">
+                <th>ID</th>
+                <th>Miktar</th>
+                <th>Göz</th>
+                <th>Ömür</th>
+            </tr>
+        `;
+
+        list.forEach((k, i) => {
+            html += `
+                <tr>
+                    <td>${k.MRPISCI_ID ?? ""}</td>
+                    <td class="editable-k" data-index="${i}" data-field="Miktar">${k.Miktar ?? ""}</td>
+                    <td class="editable-k" data-index="${i}" data-field="GozSayisi">${k.GozSayisi ?? ""}</td>
+                    <td class="editable-k" data-index="${i}" data-field="Omur">${k.Omur ?? ""}</td>
+                </tr>
+            `;
+        });
+
+        table.innerHTML = html;
+        activateInlineKaynak(table);
+    }
+
+    function activateInline(parent) {
+
+        parent.querySelectorAll(".editable").forEach(cell => {
+
+            cell.addEventListener("click", function () {
+
+                if (this.querySelector("input")) return;
+
+                let oldValue = this.innerText;
+                let input = document.createElement("input");
+                input.value = oldValue;
+
+                this.innerHTML = "";
+                this.appendChild(input);
+                input.focus();
+
+                input.addEventListener("blur", () => saveMain(this, oldValue));
+                input.addEventListener("keydown", e => {
+                    if (e.key === "Enter") saveMain(this, oldValue);
+                });
+            });
+        });
+    }
+
+    function saveMain(cell, oldValue) {
+
+        let input = cell.querySelector("input");
+        let newValue = input.value;
+        let field = cell.dataset.field;
+
+        let row = cell.closest(".detailRow");
+        let holder = row.querySelector(".jsonHolder");
+        let full = JSON.parse(holder.innerText);
+
+        full[field] = newValue;
+
+        saveFull(full, holder, () => cell.innerHTML = newValue, () => cell.innerHTML = oldValue);
+    }
+
+    function activateInlineFire(table) {
+
+        table.querySelectorAll(".editable-fire").forEach(cell => {
+
+            cell.addEventListener("click", function () {
+
+                if (this.querySelector("input")) return;
+
+                let oldValue = this.innerText;
+                let input = document.createElement("input");
+                input.value = oldValue;
+
+                this.innerHTML = "";
+                this.appendChild(input);
+                input.focus();
+
+                input.addEventListener("blur", () => saveFire(this, oldValue));
+                input.addEventListener("keydown", e => {
+                    if (e.key === "Enter") saveFire(this, oldValue);
+                });
+            });
+        });
+    }
+
+    function saveFire(cell, oldValue) {
+
+        let input = cell.querySelector("input");
+        let newValue = input.value;
+
+        let index = cell.dataset.index;
+        let field = cell.dataset.field;
+
+        let row = cell.closest(".detailRow");
+        let holder = row.querySelector(".jsonHolder");
+        let full = JSON.parse(holder.innerText);
+
+        full.ShrinkageDetailList[index][field] = newValue;
+
+        saveFull(full, holder, () => cell.innerHTML = newValue, () => cell.innerHTML = oldValue);
+    }
+
+    function activateInlineKaynak(table) {
+
+        table.querySelectorAll(".editable-k").forEach(cell => {
+
+            cell.addEventListener("click", function () {
+
+                if (this.querySelector("input")) return;
+
+                let oldValue = this.innerText;
+                let input = document.createElement("input");
+                input.value = oldValue;
+
+                this.innerHTML = "";
+                this.appendChild(input);
+                input.focus();
+
+                input.addEventListener("blur", () => saveKaynak(this, oldValue));
+                input.addEventListener("keydown", e => {
+                    if (e.key === "Enter") saveKaynak(this, oldValue);
+                });
+            });
+        });
+    }
+
+    function saveKaynak(cell, oldValue) {
+
+        let input = cell.querySelector("input");
+        let newValue = input.value;
+
+        let index = cell.dataset.index;
+        let field = cell.dataset.field;
+
+        let row = cell.closest(".detailRow");
+        let holder = row.querySelector(".jsonHolder");
+        let full = JSON.parse(holder.innerText);
+
+        full.UAKKaynakLists[index][field] = newValue;
+
+        saveFull(full, holder, () => cell.innerHTML = newValue, () => cell.innerHTML = oldValue);
+    }
+
+    function saveFull(full, holder, success, fail) {
+
+        fetch('/ProductionFlow/Save', {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(full)
+        })
+            .then(r => r.json())
+            .then(res => {
+                holder.innerText = JSON.stringify(full);
+                if (success) success();
+            })
+            .catch(() => {
+                if (fail) fail();
+            });
+    }
+
+    document.getElementById("btnUSK").addEventListener("click", () => {
+
+        let isEmriNo = new URLSearchParams(window.location.search).get("isEmriNo");
+
+        if (!isEmriNo) {
+            alert("İş emri girilmemiş.");
+            return;
+        }
+
+        fetch('/ProductionFlow/ConvertToUSK?isEmriNo=' + isEmriNo, { method: "POST" })
+            .then(r => r.json())
+            .then(res => alert(JSON.stringify(res)));
+    });
+
+</script>

@@ -1,0 +1,265 @@
+﻿@model IEnumerable<dynamic>
+
+<h2>USK Fişleri</h2>
+
+<table class="table table-bordered table-striped" id="uskTable">
+    <thead class="table-dark">
+        <tr>
+            <th>Fiş No</th>
+            <th>Tarih</th>
+            <th>Mamul</th>
+            <th>Miktar</th>
+            <th>Depo</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        @foreach (var f in Model)
+        {
+            <!-- Ana satır -->
+            <tr class="fisRow" data-fisno="@f.UretSon_FisNo">
+                <td>@f.UretSon_FisNo</td>
+                <td>@f.UretSon_Tarih</td>
+                <td>@f.UretSon_Mamul</td>
+                <td>@f.UretSon_Miktar</td>
+                <td>@f.UretSon_Depo</td>
+            </tr>
+
+            <!-- Pivot satırı -->
+            <tr class="detailRow" style="display:none;">
+                <td colspan="6">
+
+                    <div class="loader">Yükleniyor...</div>
+
+                    <!-- FULL JSON buraya saklanıyor -->
+                    <div class="jsonHolder" style="display:none;"></div>
+
+                    <!-- Kalem tablosu -->
+                    <table class="table table-sm table-striped mt-2 kalemTablo"></table>
+
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+@{
+    int page = ViewBag.Page;
+    int pageSize = ViewBag.PageSize;
+    int total = ViewBag.TotalCount;
+
+    int totalPages = (int)Math.Ceiling((double)total / pageSize);
+
+    int maxVisible = 10;        // Maksimum gösterilecek sayfa
+    int startPage = Math.Max(1, page - maxVisible / 2);
+    int endPage = Math.Min(totalPages, startPage + maxVisible - 1);
+
+    // Eğer sağ taraf taşarsa sola kaydır
+    if (endPage - startPage < maxVisible - 1)
+    {
+        startPage = Math.Max(1, endPage - maxVisible + 1);
+    }
+}
+<nav>
+    <ul class="pagination justify-content-center">
+
+        <!-- İlk sayfa -->
+        <li class="page-item @(page == 1 ? "disabled" : "")">
+            <a class="page-link" href="?page=1">⏮ İlk</a>
+        </li>
+
+        <!-- Önceki -->
+        <li class="page-item @(page == 1 ? "disabled" : "")">
+            <a class="page-link" href="?page=@(page - 1)">◀</a>
+        </li>
+
+        <!-- Dinamik sayfa numaraları -->
+        @for (int i = startPage; i <= endPage; i++)
+        {
+            <li class="page-item @(i == page ? "active" : "")">
+                <a class="page-link" href="?page=@i">@i</a>
+            </li>
+        }
+
+        <!-- Sonraki -->
+        <li class="page-item @(page == totalPages ? "disabled" : "")">
+            <a class="page-link" href="?page=@(page + 1)">▶</a>
+        </li>
+
+        <!-- Son sayfa -->
+        <li class="page-item @(page == totalPages ? "disabled" : "")">
+            <a class="page-link" href="?page=@totalPages">⏭ Son</a>
+        </li>
+
+    </ul>
+</nav>
+
+
+
+
+@section Scripts {
+    <script>
+
+        // ===============================================
+        //            P I V O T   A Ç / K A P A T
+        // ===============================================
+        document.querySelectorAll(".fisRow").forEach(row => {
+
+            row.addEventListener("click", function () {
+
+                let fisNo = this.dataset.fisno;
+                let detailRow = this.nextElementSibling;
+                let table = detailRow.querySelector(".kalemTablo");
+                let holder = detailRow.querySelector(".jsonHolder");
+
+                if (detailRow.style.display === "none") {
+
+                    detailRow.style.display = "";
+                    table.innerHTML = "<tr><td>Yükleniyor...</td></tr>";
+
+                    // ✔ Full JSON'u controller’dan al
+                    fetch(`/FinishedGoodsReceiptWChanges/GetFull/${fisNo}`)
+                        .then(r => r.json())
+                        .then(full => {
+
+                            if (!full.IsSuccessful) {
+                                table.innerHTML = "<tr><td>Fiş bulunamadı</td></tr>";
+                                return;
+                            }
+
+                            let data = full.Data;
+                            holder.innerText = JSON.stringify(data); // Full fiş JSON'u sakla
+
+                            // ---------- Pivot Kalem Tablosu ----------
+                            let html = `
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Stok</th>
+                                        <th>G/C</th>
+                                        <th>Depo</th>
+                                        <th>Miktar</th>
+                                        <th>2. Miktar</th>
+                                        <th>Açıklama</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                            `;
+
+                            data.Kalem.forEach(k => {
+                                html += `
+                                    <tr data-inckey="${k.IncKeyNo}">
+                                        <td>${k.StokKodu}</td>
+                                        <td>${k.GC}</td>
+                                        <td>${k.DepoKodu}</td>
+
+                                        <td class="editable" data-field="Miktar">${k.Miktar}</td>
+                                        <td class="editable" data-field="Miktar2">${k.Miktar2}</td>
+
+                                        <td>${k.Aciklama}</td>
+                                    </tr>
+                                `;
+                            });
+
+                            html += "</tbody>";
+                            table.innerHTML = html;
+
+                            activateInlineEdit(table);
+                        });
+
+                }
+                else {
+                    detailRow.style.display = "none";
+                }
+
+            });
+
+        });
+
+
+
+        // ===============================================
+        //             INLINE EDIT aktif et
+        // ===============================================
+        function activateInlineEdit(parent) {
+
+            parent.querySelectorAll(".editable").forEach(cell => {
+
+                cell.addEventListener("click", function () {
+
+                    if (this.querySelector("input"))
+                        return;
+
+                    let oldValue = this.innerText;
+                    let input = document.createElement("input");
+                    input.classList.add("form-control");
+                    input.value = oldValue;
+
+                    this.innerHTML = "";
+                    this.appendChild(input);
+                    input.focus();
+
+                    input.addEventListener("blur", () => saveCell(this, oldValue));
+                    input.addEventListener("keydown", e => {
+                        if (e.key === "Enter")
+                            saveCell(this, oldValue);
+                    });
+                });
+            });
+        }
+
+
+
+        // ===============================================
+        //           SAVE FULL JSON → /Save
+        // ===============================================
+        function saveCell(cell, oldValue) {
+
+            let input = cell.querySelector("input");
+            let newValue = input.value;
+
+            if (oldValue == newValue) {
+                cell.innerHTML = oldValue;
+                return;
+            }
+
+            let tr = cell.closest("tr");
+            let incKey = parseInt(tr.dataset.inckey);
+
+            let detailRow = tr.closest(".detailRow");
+            let holder = detailRow.querySelector(".jsonHolder");
+
+            let fullJson = JSON.parse(holder.innerText);
+
+            // ✔ Kalemi bul ve güncelle
+            fullJson.Kalem.forEach(k => {
+                if (k.IncKeyNo === incKey) {
+                    k[cell.dataset.field] = parseFloat(newValue);
+                }
+            });
+
+            // ✔ SAVE API
+            fetch('/FinishedGoodsReceiptWChanges/Save', {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(fullJson)
+            })
+            .then(r => r.json())
+            .then(res => {
+
+                if (res.IsSuccessful === true) {
+
+                    holder.innerText = JSON.stringify(fullJson);
+                    cell.innerHTML = newValue;
+
+                    cell.style.backgroundColor = "#c4ffda";
+                    setTimeout(() => cell.style.backgroundColor = "", 600);
+                }
+                else {
+                    alert("Kaydedilemedi: " + res.ErrorDesc);
+                    cell.innerHTML = oldValue;
+                }
+            });
+
+        }
+
+    </script>
+}

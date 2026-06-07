@@ -1,0 +1,337 @@
+@model IEnumerable<dynamic>
+
+<h2>Depo Transfer Fişleri (docType=5)</h2>
+
+<div class="mb-3">
+    <a href="@Url.Action("New", "DepoTransfer")" class="btn btn-success">+ Yeni Fiş Oluştur</a>
+</div>
+
+<table class="table table-bordered table-striped" id="depoTable">
+    <thead class="table-dark">
+        <tr>
+            <th>Fiş No</th>
+            <th>Tarih</th>
+            <th>Çıkış Depo</th>
+            <th>Giriş Depo</th>
+            <th>Kalem Adedi</th>
+            <th>İşlem</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var f in Model)
+        {
+            // Bir fişteki ilk kalem üzerinden depo bilgilerini çekiyoruz
+            var firstKalem = (f.Kalems != null && f.Kalems.Count > 0) ? f.Kalems[0] : null;
+
+            string fisNo = f.FatUst.FATIRS_NO;
+            string tarih = f.FatUst.Tarih;
+            int? cikisDepo = firstKalem != null ? (int?)firstKalem.DEPO_KODU : null;
+            int? girisDepo = firstKalem != null ? (int?)firstKalem.Gir_Depo_Kodu : null;
+            int kalemAdedi = f.Kalems != null ? (int)f.Kalems.Count : 0;
+
+            <!-- Ana satır -->
+            <tr class="fisRow" data-fisno="@fisNo">
+                <td>@fisNo</td>
+                <td>@tarih</td>
+                <td>@(cikisDepo?.ToString() ?? "-")</td>
+                <td>@(girisDepo?.ToString() ?? "-")</td>
+                <td>@kalemAdedi</td>
+                <td>
+                    <button class="btn btn-sm btn-danger btnDeleteFis" data-fisno="@fisNo">Sil</button>
+                </td>
+            </tr>
+
+            <!-- Pivot satır -->
+            <tr class="detailRow" style="display:none;" data-fisno="@fisNo">
+                <td colspan="6">
+
+                    <div class="loader">Yükleniyor...</div>
+
+                    <!-- FULL JSON burada saklanacak -->
+                    <div class="jsonHolder" style="display:none;"></div>
+
+                    <!-- Kalem tablosu -->
+                    <table class="table table-sm table-striped mt-2 kalemTablo"></table>
+
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@{
+    int page = ViewBag.Page ?? 1;
+    int pageSize = ViewBag.PageSize ?? 20;
+    int total = ViewBag.TotalCount ?? 0;
+
+    int totalPages = (int)Math.Ceiling((double)(total == 0 ? 1 : total) / pageSize);
+
+    int maxVisible = 10;        // Maksimum gösterilecek sayfa
+    int startPage = Math.Max(1, page - maxVisible / 2);
+    int endPage = Math.Min(totalPages, startPage + maxVisible - 1);
+
+    if (endPage - startPage < maxVisible - 1)
+    {
+        startPage = Math.Max(1, endPage - maxVisible + 1);
+    }
+}
+
+<nav>
+    <ul class="pagination justify-content-center">
+
+        <!-- İlk sayfa -->
+        <li class="page-item @(page == 1 ? "disabled" : "")">
+            <a class="page-link" href="?page=1">⏮ İlk</a>
+        </li>
+
+        <!-- Önceki -->
+        <li class="page-item @(page == 1 ? "disabled" : "")">
+            <a class="page-link" href="?page=@(page - 1)">◀</a>
+        </li>
+
+        <!-- Dinamik sayfa numaraları -->
+        @for (int i = startPage; i <= endPage; i++)
+        {
+            <li class="page-item @(i == page ? "active" : "")">
+                <a class="page-link" href="?page=@i">@i</a>
+            </li>
+        }
+
+        <!-- Sonraki -->
+        <li class="page-item @(page == totalPages ? "disabled" : "")">
+            <a class="page-link" href="?page=@(page + 1)">▶</a>
+        </li>
+
+        <!-- Son sayfa -->
+        <li class="page-item @(page == totalPages ? "disabled" : "")">
+            <a class="page-link" href="?page=@totalPages">⏭ Son</a>
+        </li>
+
+    </ul>
+</nav>
+
+
+@section Scripts {
+    <script>
+        // ===============================================
+        //            P I V O T   A Ç / K A P A T
+        // ===============================================
+        document.querySelectorAll(".fisRow").forEach(row => {
+
+            row.addEventListener("click", function (e) {
+
+                // Sil butonuna tıklandıysa pivot açılmasın
+                if (e.target.closest('.btnDeleteFis')) {
+                    return;
+                }
+
+                let fisNo = this.dataset.fisno;
+                let detailRow = document.querySelector(`.detailRow[data-fisno="${fisNo}"]`);
+                let table = detailRow.querySelector(".kalemTablo");
+                let holder = detailRow.querySelector(".jsonHolder");
+                let loader = detailRow.querySelector(".loader");
+
+                if (detailRow.style.display === "none") {
+
+                    detailRow.style.display = "";
+                    loader.style.display = "block";
+                    table.innerHTML = "";
+
+                    // ✔ Full JSON'u controller'dan al
+                    fetch(`/DepoTransfer/GetFull?fisNo=${fisNo}`)
+                        .then(r => r.json())
+                        .then(full => {
+
+                            loader.style.display = "none";
+
+                            if (!full.IsSuccessful) {
+                                table.innerHTML = "<tr><td>Fiş bulunamadı veya hata oluştu</td></tr>";
+                                return;
+                            }
+
+                            let data = full.Data;
+                            holder.innerText = JSON.stringify(data); // Full fiş JSON'u sakla
+
+                            // ---------- Pivot Kalem Tablosu ----------
+                            let html = `
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Stok</th>
+                                        <th>Çıkış Depo</th>
+                                        <th>Giriş Depo</th>
+                                        <th>Miktar</th>
+                                        <th>Birim Fiyat</th>
+                                        <th>Açıklama</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                            `;
+
+                            (data.Kalems || []).forEach(k => {
+                                html += `
+                                    <tr data-inckey="${k.IncKeyNo}">
+                                        <td>${k.StokKodu}</td>
+
+                                        <td class="editable" data-field="DEPO_KODU">${k.DEPO_KODU}</td>
+                                        <td class="editable" data-field="Gir_Depo_Kodu">${k.Gir_Depo_Kodu}</td>
+                                        <td class="editable" data-field="STra_GCMIK">${k.STra_GCMIK}</td>
+                                        <td class="editable" data-field="STra_BF">${k.STra_BF}</td>
+
+                                        <td>${k.STra_ACIK || ""}</td>
+                                    </tr>
+                                `;
+                            });
+
+                            html += "</tbody>";
+                            table.innerHTML = html;
+
+                            activateInlineEdit(table, fisNo);
+                        })
+                        .catch(err => {
+                            loader.style.display = "none";
+                            table.innerHTML = `<tr><td colspan="6">Hata: ${err}</td></tr>`;
+                        });
+
+                }
+                else {
+                    detailRow.style.display = "none";
+                }
+
+            });
+
+        });
+
+
+        // ===============================================
+        //             INLINE EDIT aktif et
+        // ===============================================
+        function activateInlineEdit(parent, fisNo) {
+
+            parent.querySelectorAll(".editable").forEach(cell => {
+
+                cell.addEventListener("click", function () {
+
+                    if (this.querySelector("input"))
+                        return;
+
+                    let oldValue = this.innerText;
+                    let input = document.createElement("input");
+                    input.classList.add("form-control", "form-control-sm");
+                    input.value = oldValue;
+
+                    this.innerHTML = "";
+                    this.appendChild(input);
+                    input.focus();
+
+                    input.addEventListener("blur", () => saveCell(this, oldValue, fisNo));
+                    input.addEventListener("keydown", e => {
+                        if (e.key === "Enter")
+                            saveCell(this, oldValue, fisNo);
+                        if (e.key === "Escape") {
+                            this.innerHTML = oldValue;
+                        }
+                    });
+                });
+            });
+        }
+
+
+        // ===============================================
+        //           SAVE FULL JSON → /DepoTransfer/Save
+        // ===============================================
+        function saveCell(cell, oldValue, fisNo) {
+
+            let input = cell.querySelector("input");
+            if (!input) return;
+
+            let newValue = input.value;
+
+            if (oldValue == newValue) {
+                cell.innerHTML = oldValue;
+                return;
+            }
+
+            let tr = cell.closest("tr");
+            let incKey = parseInt(tr.dataset.inckey);
+
+            // ✅ detailRow'u fisNo ile bul
+            let detailRow = document.querySelector(`.detailRow[data-fisno="${fisNo}"]`);
+            let holder = detailRow.querySelector(".jsonHolder");
+            let fullJson = JSON.parse(holder.innerText);
+
+            // ✔ Kalemi bul ve güncelle (Kalems dizisinde)
+            (fullJson.Kalems || []).forEach(k => {
+                if (k.IncKeyNo === incKey) {
+                    let field = cell.dataset.field;
+
+                    if (field === "DEPO_KODU" || field === "Gir_Depo_Kodu") {
+                        k[field] = parseInt(newValue);
+                    } else if (field === "STra_GCMIK" || field === "STra_BF") {
+                        k[field] = parseFloat(newValue.replace(",", "."));
+                    } else {
+                        k[field] = newValue;
+                    }
+                }
+            });
+
+            // ✔ SAVE API
+            fetch('/DepoTransfer/Save', {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(fullJson)
+            })
+                .then(r => r.json())
+                .then(res => {
+
+                    if (res.IsSuccessful === true) {
+
+                        holder.innerText = JSON.stringify(fullJson);
+                        cell.innerHTML = newValue;
+
+                        cell.style.backgroundColor = "#c4ffda";
+                        setTimeout(() => cell.style.backgroundColor = "", 600);
+                    }
+                    else {
+                        alert("Kaydedilemedi: " + (res.ErrorDesc || "Bilinmeyen hata"));
+                        cell.innerHTML = oldValue;
+                    }
+                })
+                .catch(err => {
+                    alert("Hata oluştu: " + err);
+                    cell.innerHTML = oldValue;
+                });
+        }
+
+        // ===============================================
+        //             FİŞ SİLME
+        // ===============================================
+        document.querySelectorAll(".btnDeleteFis").forEach(btn => {
+            btn.addEventListener("click", function (e) {
+                e.stopPropagation(); // Pivot açılmasın
+
+                let fisNo = this.dataset.fisno;
+
+                if (!confirm(`${fisNo} numaralı fişi silmek istediğinize emin misiniz?`)) {
+                    return;
+                }
+
+                fetch(`/DepoTransfer/Delete?fisNo=${fisNo}`, {
+                    method: "POST"
+                })
+                    .then(r => r.json())
+                    .then(res => {
+                        if (res.IsSuccessful === true) {
+                            alert("Fiş başarıyla silindi.");
+                            location.reload();
+                        } else {
+                            alert("Silme başarısız: " + (res.ErrorDesc || "Bilinmeyen hata"));
+                        }
+                    })
+                    .catch(err => {
+                        alert("Hata oluştu: " + err);
+                    });
+            });
+        });
+
+    </script>
+}

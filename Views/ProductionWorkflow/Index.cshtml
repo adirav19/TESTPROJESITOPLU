@@ -1,0 +1,893 @@
+@{
+    ViewData["Title"] = "Üretim Workflow";
+    ViewData["FullWidth"] = true;
+}
+
+<style>
+    :root {
+        --border-color: #e1e4e8;
+        --bg-panel: #ffffff;
+        --bg-hover: #f6f8fa;
+        --text-primary: #24292e;
+        --text-secondary: #586069;
+        --accent-blue: #0366d6;
+        --success-green: #28a745;
+        --danger-red: #d73a49;
+    }
+
+    body {
+        background: #f6f8fa;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    }
+
+    .workflow-container {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 12px;
+        padding: 12px;
+        max-width: 100%;
+        margin: 0;
+    }
+
+    @@media (max-width: 768px) {
+        .workflow-container {
+            grid-template-columns: 1fr;
+            gap: 16px;
+        }
+
+        .workflow-panel {
+            max-height: none;
+            min-height: 400px;
+        }
+
+        .panel-body {
+            max-height: 400px;
+        }
+    }
+
+    @@media (min-width: 769px) and (max-width: 1200px) {
+        .workflow-container {
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .workflow-panel:last-child {
+            grid-column: 1 / -1;
+        }
+    }
+
+    .workflow-panel {
+        background: var(--bg-panel);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        max-height: calc(100vh - 100px);
+    }
+
+    .panel-header {
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border-color);
+        background: var(--bg-hover);
+        font-weight: 600;
+        font-size: 14px;
+        color: var(--text-primary);
+    }
+
+    .panel-body {
+        padding: 12px;
+        overflow-y: auto;
+        flex: 1;
+    }
+
+        .panel-body::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .panel-body::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        .panel-body::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+
+    .form-group {
+        margin-bottom: 10px;
+    }
+
+    .form-label {
+        display: block;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 6px;
+    }
+
+    .form-control-custom {
+        width: 100%;
+        padding: 8px 12px;
+        font-size: 14px;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        background: var(--bg-panel);
+        transition: border-color 0.15s;
+    }
+
+        .form-control-custom:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px rgba(3, 102, 214, 0.1);
+        }
+
+    .btn-custom {
+        padding: 8px 16px;
+        font-size: 14px;
+        font-weight: 500;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+
+    .btn-success-custom {
+        background: var(--success-green);
+        color: white;
+    }
+
+        .btn-success-custom:hover {
+            background: #22863a;
+        }
+
+    .table-custom {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+    }
+
+        .table-custom thead {
+            background: var(--bg-hover);
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .table-custom th {
+            padding: 10px 12px;
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .table-custom td {
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-primary);
+        }
+
+        .table-custom tbody tr {
+            cursor: pointer;
+            transition: background 0.1s;
+        }
+
+            .table-custom tbody tr:hover {
+                background: var(--bg-hover);
+            }
+
+            .table-custom tbody tr.selected {
+                background: #e3f2fd;
+            }
+
+    .create-form {
+        background: var(--bg-hover);
+        padding: 12px;
+        border-radius: 6px;
+        margin-bottom: 12px;
+    }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+        margin-bottom: 8px;
+    }
+
+    @@media (max-width: 480px) {
+        .form-row {
+            grid-template-columns: 1fr;
+        }
+
+        .table-custom {
+            font-size: 11px;
+        }
+
+            .table-custom th, .table-custom td {
+                padding: 6px 8px;
+            }
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 40px 20px;
+        color: var(--text-secondary);
+    }
+
+    .empty-state-icon {
+        font-size: 48px;
+        margin-bottom: 12px;
+        opacity: 0.3;
+    }
+
+    .badge-custom {
+        display: inline-block;
+        padding: 2px 8px;
+        font-size: 11px;
+        font-weight: 600;
+        border-radius: 12px;
+        background: var(--bg-hover);
+        color: var(--text-secondary);
+    }
+
+    .loading {
+        text-align: center;
+        padding: 20px;
+        color: var(--text-secondary);
+    }
+
+    .editable-cell {
+        cursor: text;
+        padding: 4px 8px;
+        border-radius: 3px;
+    }
+
+        .editable-cell:hover {
+            background: var(--bg-hover);
+        }
+
+    .editable-fis-miktar {
+        cursor: text;
+        padding: 4px 8px;
+        border-radius: 3px;
+    }
+
+        .editable-fis-miktar:hover {
+            background: var(--bg-hover);
+        }
+
+    .kalem-detail {
+        background: #fafbfc;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        padding: 12px;
+        margin-top: 12px;
+    }
+
+    .kalem-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    #ordersTableContainer table {
+        min-width: 100%;
+    }
+
+    #ordersTableContainer td,
+    #ordersTableContainer th {
+        padding: 8px 10px;
+        font-size: 13px;
+        line-height: 1.3;
+    }
+</style>
+
+<div class="workflow-container">
+
+    <!-- SOL PANEL: İŞ EMRİ OLUŞTURMA -->
+    <div class="workflow-panel">
+        <div class="panel-header">
+            📋 İş Emri Yönetimi
+        </div>
+        <div class="panel-body">
+
+            <div class="create-form">
+                <div class="form-group">
+                    <label class="form-label">İş Emri No</label>
+                    <input id="new_IsEmriNo" class="form-control-custom" placeholder="000000000000010" />
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Tarih</label>
+                        <input id="new_Tarih" type="date" class="form-control-custom" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Stok Kodu</label>
+                        <input id="new_StokKodu" class="form-control-custom" placeholder="DK1016" />
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Miktar</label>
+                        <input id="new_Miktar" type="number" step="0.01" class="form-control-custom" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Depo Kodu</label>
+                        <input id="new_DepoKodu" type="number" class="form-control-custom" value="4000" />
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Çıkış Depo</label>
+                        <input id="new_CikisDepoKodu" type="number" class="form-control-custom" value="4000" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Teslim Tarihi</label>
+                        <input id="new_TeslimTarihi" type="date" class="form-control-custom" />
+                    </div>
+                </div>
+
+                <button onclick="createOrder()" class="btn-custom btn-success-custom" style="width:100%; margin-top:8px;">
+                    ✓ İş Emri Oluştur
+                </button>
+            </div>
+
+            <div style="margin-top: 20px;">
+                <h6 style="font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 12px;">
+                    MEVCUT İŞ EMİRLERİ
+                </h6>
+                <div id="ordersTableContainer">
+                    <div class="loading">Yükleniyor...</div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ORTA PANEL: SERBEST ÜRETİM SONU KAYDI -->
+    <div class="workflow-panel">
+        <div class="panel-header">
+            🔧 Serbest Üretim Sonu Kaydı
+        </div>
+        <div class="panel-body">
+
+            <div id="middlePanelContent">
+                <div class="empty-state">
+                    <div class="empty-state-icon">📦</div>
+                    <div>Sol panelden bir iş emri seçin</div>
+                    <div style="font-size: 12px; color: var(--text-secondary); margin-top: 8px;">
+                        Seçilen iş emri için üretim kaydı oluşturulacak
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- SAĞ PANEL: ÜRETİM FİŞLERİ -->
+    <div class="workflow-panel">
+        <div class="panel-header">
+            📊 Üretim Fişleri
+        </div>
+        <div class="panel-body">
+
+            <div id="finishedGoodsContainer">
+                <div class="loading">Yükleniyor...</div>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+@section Scripts {
+    <script>
+        let selectedIsEmriNo = null;
+        let currentProducedData = null;
+
+        document.addEventListener("DOMContentLoaded", async function () {
+            await loadProductionOrders();
+            await loadFinishedGoods();
+        });
+
+        // İŞ EMİRLERİNİ YÜK (ProductionWorkflowController.GetProductionOrders)
+                // İŞ EMİRLERİNİ YÜK (ProductionWorkflowController.GetProductionOrders)
+            async function loadProductionOrders() {
+            try {
+                const response = await fetch('/ProductionWorkflow/GetProductionOrders');
+                const result = await response.json();
+
+                const container = document.getElementById('ordersTableContainer');
+
+                if (!result.success || !result.data || result.data.length === 0) {
+                    container.innerHTML = '<div class="empty-state">İş emri bulunamadı</div>';
+                    return;
+                }
+
+                const data = result.data;
+
+                let html = `
+                    <table class="table-custom">
+                        <thead>
+                            <tr>
+                                <th>İş Emri No</th>
+                                <th>Tarih</th>
+                                <th>Stok</th>
+                                <th>Miktar</th>
+                                <th>Depo</th>
+                                <th>Teslim</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                data.forEach(item => {
+                    let isEmriNo = item.IsEmriNo || item.isEmriNo;
+                    let tarih = item.Tarih || item.tarih;
+                    let stok = item.StokKodu || item.stokKodu;
+                    let miktar = item.Miktar || item.miktar;
+                    let depoKodu = item.DepoKodu || item.depoKodu;
+                    let teslim = item.TeslimTarihi || item.teslimTarihi;
+
+                    html += `
+                        <tr onclick="selectProductionOrder('${isEmriNo}')" data-isemrino="${isEmriNo}">
+                            <td><strong>${isEmriNo}</strong></td>
+                            <td>${tarih ? new Date(tarih).toLocaleDateString('tr-TR') : '-'}</td>
+                            <td>${stok}</td>
+                            <td>${miktar}</td>
+                            <td>${depoKodu}</td>
+                            <td>${teslim ? new Date(teslim).toLocaleDateString('tr-TR') : '-'}</td>
+                        </tr>
+                    `;
+                });
+
+                html += '</tbody></table>';
+
+                container.innerHTML = html;
+
+            } catch (err) {
+                console.error(err);
+                document.getElementById('ordersTableContainer').innerHTML =
+                    '<div class="empty-state">Hata: ' + err.message + '</div>';
+            }
+        }
+
+        // İŞ EMRİ SEÇİLDİ
+        async function selectProductionOrder(isEmriNo) {
+            selectedIsEmriNo = isEmriNo;
+
+            document.querySelectorAll('#ordersTableContainer tr').forEach(tr => tr.classList.remove('selected'));
+            event.target.closest('tr').classList.add('selected');
+
+            const middlePanel = document.getElementById('middlePanelContent');
+            middlePanel.innerHTML = '<div class="loading">Yükleniyor...</div>';
+
+            try {
+                const response = await fetch(`/FinishedGoodsReceiptWChanges/CreateFromProductionOrder?isEmriNo=${isEmriNo}`);
+                const html = await response.text();
+
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                    const mainContent =
+        doc.querySelector('.container') ||
+        doc.querySelector('#main') ||
+        doc.body;
+
+                const scripts = mainContent.querySelectorAll('script');
+                scripts.forEach(s => s.remove());
+
+                middlePanel.innerHTML = mainContent.innerHTML;
+
+                if (doc.querySelector('#headerForm')) {
+                    setupMiddlePanelForm();
+                }
+
+            } catch (err) {
+                console.error("❌ Hata:", err);
+                middlePanel.innerHTML = '<div class="empty-state">Hata oluştu</div>';
+            }
+        }
+
+        // ORTA PANEL FORM AYARLARI
+        function setupMiddlePanelForm() {
+            const produceBtn = document.getElementById('produceBtn');
+            if (!produceBtn) return;
+
+            produceBtn.classList = 'btn-custom btn-success-custom';
+            produceBtn.style.width = '100%';
+            produceBtn.style.marginTop = '16px';
+
+            produceBtn.onclick = async function() {
+                await produceReceipt();
+            };
+        }
+
+        // FİŞ ÜRET
+        async function produceReceipt() {
+            try {
+                const fullJson = {
+                    TransactSupport: true,
+                    MuhasebelesmisBelge: false,
+                    UretSon_Tarih: document.getElementById("UretSon_Tarih")?.value,
+                    UretSon_SipNo: document.getElementById("UretSon_SipNo")?.value,
+                    UretSon_Mamul: document.getElementById("UretSon_Mamul")?.value,
+                    UretSon_Miktar: parseFloat(document.getElementById("UretSon_Miktar")?.value || 0),
+                    UretSon_MalY1: parseFloat(document.getElementById("UretSon_MalY1")?.value || 0),
+                    UretSon_Depo: parseInt(document.getElementById("LDepo")?.value || 0),
+                    Cikis_Depo: parseInt(document.getElementById("CikisDepo")?.value || 0),
+                    Aciklama: document.getElementById("Aciklama")?.value,
+                    C_Yedek1: document.getElementById("C_Yedek1")?.value,
+                    C_Yedek2: document.getElementById("C_Yedek2")?.value,
+                    DepoOnceligi: document.getElementById("DepoOnceligi")?.value
+                };
+
+                const response = await fetch('/FinishedGoodsReceiptWChanges/Produce', {
+                    method: 'POST',
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(fullJson)
+                });
+
+                const res = await response.json();
+
+                if (res.IsSuccessful !== true) {
+                    alert("❌ Hata: " + res.ErrorDesc);
+                    return;
+                }
+
+                alert("✅ Fiş başarıyla üretildi!");
+                currentProducedData = res.Data;
+
+                showKalemDetails(res.Data);
+                await loadFinishedGoods();
+
+            } catch (err) {
+                console.error("❌ Hata:", err);
+                alert("Fiş üretilirken hata oluştu!");
+            }
+        }
+
+        // KALEM DETAYLARINI GÖSTER
+        function showKalemDetails(data) {
+            const kalemContainer = document.getElementById('kalemContainer');
+            if (!kalemContainer) return;
+
+            kalemContainer.style.display = 'block';
+
+            const tbody = document.querySelector('#kalemTable tbody');
+            if (!tbody) return;
+
+            tbody.innerHTML = '';
+
+            (data.Kalem || []).forEach(k => {
+                const tr = document.createElement('tr');
+                tr.setAttribute('data-inckey', k.IncKeyNo);
+                tr.innerHTML = `
+                    <td>${k.StokKodu}</td>
+                    <td>${k.GC}</td>
+                    <td>${k.DepoKodu}</td>
+                    <td class="editable-cell" data-field="Miktar">${k.Miktar}</td>
+                    <td class="editable-cell" data-field="Miktar2">${k.Miktar2}</td>
+                    <td>${k.Aciklama}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            activateInlineEdit();
+        }
+
+        // INLINE EDIT AKTİF
+        function activateInlineEdit() {
+            document.querySelectorAll('.editable-cell').forEach(cell => {
+                cell.addEventListener('click', function() {
+                    if (this.querySelector('input')) return;
+
+                    const oldValue = this.innerText;
+                    const input = document.createElement('input');
+                    input.classList.add('form-control-custom');
+                    input.value = oldValue;
+                    input.style.padding = '4px 8px';
+
+                    this.innerHTML = '';
+                    this.appendChild(input);
+                    input.focus();
+
+                    input.addEventListener('blur', () => saveCell(this, oldValue));
+                    input.addEventListener('keydown', e => {
+                        if (e.key === 'Enter') saveCell(this, oldValue);
+                    });
+                });
+            });
+        }
+
+        // HÜCRE KAYDET
+        async function saveCell(cell, oldValue) {
+            const input = cell.querySelector('input');
+            const newValue = input.value;
+
+            if (oldValue == newValue) {
+                cell.innerHTML = oldValue;
+                return;
+            }
+
+            const tr = cell.closest('tr');
+            const incKey = parseInt(tr.dataset.inckey);
+
+            if (!currentProducedData) {
+                alert('❌ Fiş verisi bulunamadı');
+                cell.innerHTML = oldValue;
+                return;
+            }
+
+            currentProducedData.Kalem.forEach(k => {
+                if (k.IncKeyNo === incKey) {
+                    k[cell.dataset.field] = parseFloat(newValue);
+                }
+            });
+
+            try {
+                const response = await fetch('/FinishedGoodsReceiptWChanges/Save', {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(currentProducedData)
+                });
+
+                const res = await response.json();
+
+                if (res.IsSuccessful === true) {
+                    cell.innerHTML = newValue;
+                    cell.style.backgroundColor = '#d4edda';
+                    setTimeout(() => cell.style.backgroundColor = '', 600);
+                } else {
+                    alert("❌ Kaydedilemedi: " + res.ErrorDesc);
+                    cell.innerHTML = oldValue;
+                }
+            } catch (err) {
+                console.error("❌ Hata:", err);
+                alert("Kayıt sırasında hata oluştu!");
+                cell.innerHTML = oldValue;
+            }
+        }
+
+        // ÜRETİM FİŞLERİNİ YÜK
+        async function loadFinishedGoods() {
+            try {
+                const response = await fetch('/FinishedGoods/GetAll');
+                const json = await response.json();
+
+                const container = document.getElementById('finishedGoodsContainer');
+                const data = json.data || [];
+
+                if (data.length === 0) {
+                    container.innerHTML = '<div class="empty-state">Üretim fişi bulunamadı</div>';
+                    return;
+                }
+
+                let html = '<table class="table-custom"><thead><tr><th>Fiş No</th><th>Tarih</th><th>Malzeme</th><th>Miktar</th></tr></thead><tbody>';
+
+                data.forEach(item => {
+                    html += `
+                        <tr class="fis-row" onclick="toggleFisDetail('${item.fisNo}')">
+                            <td><strong>${item.fisNo}</strong></td>
+                            <td>${item.tarih}</td>
+                            <td>${item.malzeme}</td>
+                            <td>${item.miktar}</td>
+                        </tr>
+                        <tr class="fis-detail-row" id="detail-${item.fisNo}" style="display:none;">
+                            <td colspan="4" style="padding:0;">
+                                <div class="kalem-detail">
+                                    <div class="loading">Yükleniyor...</div>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                html += '</tbody></table>';
+                container.innerHTML = html;
+
+            } catch (err) {
+                console.error("❌ Hata:", err);
+                document.getElementById('finishedGoodsContainer').innerHTML =
+                    '<div class="empty-state">Hata: ' + err.message + '</div>';
+            }
+        }
+
+        // FİŞ DETAYINI AÇ/KAPAT
+        async function toggleFisDetail(fisNo) {
+            const detailRow = document.getElementById(`detail-${fisNo}`);
+
+            if (detailRow.style.display === 'table-row') {
+                detailRow.style.display = 'none';
+                return;
+            }
+
+            detailRow.style.display = 'table-row';
+            const container = detailRow.querySelector('.kalem-detail');
+
+            try {
+                const response = await fetch(`/FinishedGoods/Detail/${fisNo}`);
+                const json = await response.json();
+
+                if (!json.success) {
+                    container.innerHTML = '<div style="color:var(--danger-red);">Hata: ' + json.message + '</div>';
+                    return;
+                }
+
+                const data = json.data;
+                const kalemler = data.kalem || [];
+
+                let html = `
+                    <div class="kalem-header">
+                        <div><strong>Fiş No:</strong> ${data.uretSon_FisNo} | <strong>Mamul:</strong> ${data.uretSon_Mamul}</div>
+                        <div><strong>Miktar:</strong> ${data.uretSon_Miktar}</div>
+                    </div>
+                `;
+
+                if (kalemler.length === 0) {
+                    html += '<div style="text-align:center; color:var(--text-secondary);">Kalem bulunamadı</div>';
+                } else {
+                    html += '<table class="table-custom" style="font-size:12px; margin-top:8px;"><thead><tr><th>#</th><th>Stok</th><th>Depo</th><th>Miktar</th></tr></thead><tbody>';
+
+                    kalemler.forEach(k => {
+                        html += `
+                            <tr data-fisno="${fisNo}" data-stok="${k.stokKodu}" data-index="${k.index}">
+                                <td>${k.index}</td>
+                                <td>${k.stokKodu}</td>
+                                <td>${k.depoKodu}</td>
+                                <td class="editable-fis-miktar" data-field="miktar">${k.miktar}</td>
+                            </tr>
+                        `;
+                    });
+
+                    html += '</tbody></table>';
+                }
+
+                container.innerHTML = html;
+                activateFisInlineEdit();
+
+            } catch (err) {
+                console.error("❌ Hata:", err);
+                container.innerHTML = '<div style="color:var(--danger-red);">Hata oluştu</div>';
+            }
+        }
+
+        // ÜRETİM FİŞLERİ INLINE EDIT
+        function activateFisInlineEdit() {
+            setTimeout(() => {
+                document.querySelectorAll('.editable-fis-miktar').forEach(cell => {
+                    cell.addEventListener('click', function() {
+                        if (this.querySelector('input')) return;
+
+                        const oldValue = this.innerText.trim();
+                        const input = document.createElement('input');
+                        input.classList.add('form-control-custom');
+                        input.value = oldValue;
+                        input.style.padding = '4px 8px';
+                        input.style.width = '80px';
+
+                        this.innerHTML = '';
+                        this.appendChild(input);
+                        input.focus();
+
+                        input.addEventListener('blur', () => saveFisCell(this, oldValue));
+                        input.addEventListener('keydown', e => {
+                            if (e.key === 'Enter') saveFisCell(this, oldValue);
+                            if (e.key === 'Escape') this.innerHTML = oldValue;
+                        });
+                    });
+                });
+            }, 100);
+        }
+
+        // ÜRETİM FİŞİ MİKTAR KAYDET
+        async function saveFisCell(cell, oldValue) {
+            const input = cell.querySelector('input');
+            const newValue = input.value.trim();
+
+            if (oldValue == newValue) {
+                cell.innerHTML = oldValue;
+                return;
+            }
+
+            const tr = cell.closest('tr');
+            const fisNo = tr.dataset.fisno;
+            const stokKodu = tr.dataset.stok;
+            const index = parseInt(tr.dataset.index);
+
+            const dto = {
+                FisNo: fisNo,
+                Index: index,
+                StokKodu: stokKodu,
+                DepoKodu: parseInt(tr.children[2].textContent.trim()),
+                Miktar: parseFloat(newValue),
+                Aciklama: "",
+                SeriVarMi: false,
+                BGTIP: ""
+            };
+
+            try {
+                cell.innerHTML = '<span style="color: var(--text-secondary);">...</span>';
+
+                const response = await fetch('/FinishedGoods/UpdateQuantity', {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(dto)
+                });
+
+                const res = await response.json();
+
+                if (res.success === true) {
+                    cell.innerHTML = newValue;
+                    cell.style.backgroundColor = '#d4edda';
+                    setTimeout(() => cell.style.backgroundColor = '', 600);
+                } else {
+                    alert("❌ Kaydedilemedi: " + (res.message || "Bilinmeyen hata"));
+                    cell.innerHTML = oldValue;
+                }
+            } catch (err) {
+                console.error("❌ Hata:", err);
+                alert("Kayıt sırasında hata oluştu!");
+                cell.innerHTML = oldValue;
+            }
+        }
+
+        // 🔹 YENİ İŞ EMRİ OLUŞTUR
+        //  -> ProductionOrderController.Create endpoint'ini kullanır
+        async function createOrder() {
+            const isEmriNo      = document.getElementById("new_IsEmriNo").value;
+            const tarih         = document.getElementById("new_Tarih").value;
+            const stokKodu      = document.getElementById("new_StokKodu").value;
+            const miktar        = document.getElementById("new_Miktar").value;
+            const depoKodu      = document.getElementById("new_DepoKodu").value;
+            const cikisDepoKodu = document.getElementById("new_CikisDepoKodu").value;
+            const teslimTarihi  = document.getElementById("new_TeslimTarihi").value;
+
+            if (!isEmriNo || !tarih || !stokKodu || !miktar || !depoKodu || !cikisDepoKodu || !teslimTarihi) {
+                alert("⚠ Zorunlu alanları doldur lütfen.");
+                return;
+            }
+
+            const form = new URLSearchParams();
+            form.append("IsEmriNo", isEmriNo);
+            form.append("Tarih", tarih);
+            form.append("StokKodu", stokKodu);
+            form.append("Miktar", miktar);
+            form.append("DepoKodu", depoKodu);
+            form.append("CikisDepoKodu", cikisDepoKodu);
+            form.append("TeslimTarihi", teslimTarihi);
+
+            try {
+                const response = await fetch('/ProductionOrder/Create', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+                    },
+                    body: form.toString()
+                });
+
+                if (response.ok) {
+                    alert("✅ Yeni iş emri başarıyla oluşturuldu!");
+                    await loadProductionOrders();   // sol paneli yenile
+
+                    document.getElementById("new_IsEmriNo").value = '';
+                    document.getElementById("new_StokKodu").value = '';
+                    document.getElementById("new_Miktar").value = '';
+                } else {
+                    const text = await response.text();
+                    console.error("❌ Sunucu cevabı:", text);
+                    alert("❌ İş emri oluşturulamadı (HTTP " + response.status + ")");
+                }
+            } catch (err) {
+                console.error("❌ Hata:", err);
+                alert("İş emri oluşturulurken hata oluştu: " + err.message);
+            }
+        }
+
+    </script>
+}

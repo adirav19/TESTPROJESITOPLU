@@ -1,0 +1,194 @@
+﻿@model dynamic
+
+@{
+    ViewData["Title"] = "Serbest Üretim Sonu Kaydı";
+}
+
+<h2>Serbest Üretim Sonu Kaydı</h2>
+<div class="input-group mb-3">
+    <span class="input-group-text">🔍 Fiş Ara</span>
+    <input id="searchBox" type="text" class="form-control" placeholder="Fiş numarası içinde geçen...">
+</div>
+<!-- ======================== -->
+<!--   FİŞ GETİRME ALANI     -->
+<!-- ======================== -->
+<div class="card mb-4">
+    <div class="card-header bg-dark text-white">
+        <strong>USK Getir</strong>
+    </div>
+    <div class="card-body">
+        <form method="get">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label>Fiş No</label>
+                    <input name="fisNo" class="form-control" placeholder="000000000001882" />
+                </div>
+
+                <div class="col-md-3">
+                    <label>İş Emri No</label>
+                    <input class="form-control" value="@Model?.UretSon_SipNo" disabled />
+                </div>
+
+                <div class="col-md-3">
+                    <label>Mamul Kodu</label>
+                    <input class="form-control" value="@Model?.UretSon_Mamul" disabled />
+                </div>
+
+                <div class="col-md-2 mt-4">
+                    <button class="btn btn-primary mt-2">Getir</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+@if (Model == null)
+{
+    <div class="alert alert-info">Fiş numarası giriniz.</div>
+    return;
+}
+
+<!-- ======================== -->
+<!--   FİŞ ÜST BİLGİLERİ     -->
+<!-- ======================== -->
+<div class="card mb-4">
+    <div class="card-body">
+        <b>Fiş No:</b> @Model.UretSon_FisNo <br />
+        <b>Mamul:</b> @Model.UretSon_Mamul <br />
+        <b>Miktar:</b> @Model.UretSon_Miktar <br />
+        <b>Tarih:</b> @Model.UretSon_Tarih <br />
+    </div>
+</div>
+
+
+<!-- ======================== -->
+<!--   KALEM PİVOT TABLO     -->
+<!-- ======================== -->
+<h4>USK Kalemleri</h4>
+
+<table class="table table-bordered table-striped" id="uskTable">
+    <thead class="table-dark">
+        <tr>
+            <th>Stok</th>
+            <th>G/C</th>
+            <th>Depo</th>
+            <th>Miktar</th>
+            <th>2. Miktar</th>
+            <th>Açıklama</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        @foreach (var k in Model.Kalem)
+        {
+            string rowJson = Newtonsoft.Json.JsonConvert.SerializeObject(k);
+
+            <tr data-kalem='@rowJson'>
+                <td>@k.StokKodu</td>
+                <td>@k.GC</td>
+                <td>@k.DepoKodu</td>
+
+                <td class="editable" data-field="Miktar">@k.Miktar</td>
+                <td class="editable" data-field="Miktar2">@k.Miktar2</td>
+
+                <td>@k.Aciklama</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+
+@section Scripts {
+    <script>
+
+        // ===========================
+        // INLINE EDIT
+        // ===========================
+        document.querySelectorAll(".editable").forEach(cell => {
+            cell.addEventListener("click", function () {
+
+                if (this.querySelector("input"))
+                    return;
+
+                let oldValue = this.innerText;
+                let input = document.createElement("input");
+                input.value = oldValue;
+                input.classList.add("form-control");
+
+                this.innerHTML = "";
+                this.appendChild(input);
+                input.focus();
+
+                input.addEventListener("blur", () => saveCell(this, oldValue));
+                input.addEventListener("keydown", e => {
+                    if (e.key === "Enter") saveCell(this, oldValue);
+                });
+            });
+        });
+
+        // ===========================
+        // SAVE → FULL JSON’A GÖMER
+        // ===========================
+        function saveCell(cell, oldValue) {
+
+            let input = cell.querySelector("input");
+            let newValue = input.value;
+
+            if (newValue === oldValue) {
+                cell.innerHTML = oldValue;
+                return;
+            }
+
+            let tr = cell.closest("tr");
+            let kalem = JSON.parse(tr.dataset.kalem);
+            let field = cell.dataset.field;
+
+            kalem[field] = parseFloat(newValue);
+
+            // full fişi yakala
+            let fullJson = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model));
+
+            // kalemde değişiklik yap
+            for (let i = 0; i < fullJson.Kalem.length; i++) {
+                if (fullJson.Kalem[i].IncKeyNo === kalem.IncKeyNo) {
+                    fullJson.Kalem[i][field] = kalem[field];
+                }
+            }
+
+            // SAVE gönder
+            fetch('/FinishedGoodsReceiptWChanges/Save', {
+                method: 'POST',
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(fullJson)
+            })
+            .then(r => r.json())
+            .then(res => {
+                if (res.IsSuccessful === true) {
+                    tr.dataset.kalem = JSON.stringify(kalem);
+                    cell.innerHTML = newValue;
+                    cell.style.backgroundColor = "#c4ffda";
+                    setTimeout(() => cell.style.backgroundColor = "", 700);
+                } else {
+                    alert("Kaydedilemedi: " + res.ErrorDesc);
+                    cell.innerHTML = oldValue;
+                }
+            });
+        }
+                document.getElementById("searchBox").addEventListener("keyup", function () {
+
+            let text = this.value.toLowerCase();
+
+            document.querySelectorAll("#uskTable tbody tr.fisRow").forEach(row => {
+                let fis = row.dataset.fisno.toLowerCase();
+
+                if (fis.includes(text)) {
+                    row.style.display = "";
+                    row.nextElementSibling.style.display = "none"; // pivotu kapat
+                } else {
+                    row.style.display = "none";
+                    row.nextElementSibling.style.display = "none";
+                }
+            });
+        });
+    </script>
+}

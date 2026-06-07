@@ -1,0 +1,288 @@
+@{
+    ViewData["Title"] = "Hızlı Tahsilat Listesi";
+}
+
+<div class="container mt-4">
+    <h2 class="mb-4">💰 Hızlı Tahsilat Listesi</h2>
+
+    <table id="paymentTable" class="table table-bordered table-hover">
+        <thead class="table-light">
+            <tr>
+                <th>Kasa Kodu</th>
+                <th>Belge No</th>
+                <th>Cari Kodu</th>
+                <th>İşlem Tarihi</th>
+                <th>Döviz Tipi</th>
+                <th>Kalem Sayısı</th>
+                <th style="width:50px">📌</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr><td colspan="7" class="text-center">Yükleniyor...</td></tr>
+        </tbody>
+    </table>
+
+    <div class="d-flex justify-content-between mt-3">
+        <button id="prevPage" class="btn btn-secondary btn-sm">⬅ Önceki</button>
+        <span id="pageInfo" class="fw-bold"></span>
+        <button id="nextPage" class="btn btn-secondary btn-sm">İleri ➡</button>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener("DOMContentLoaded", async () => {
+
+            let currentPage = 1;
+            const pageSize = 10;
+
+            const tbody = document.querySelector("#paymentTable tbody");
+            const pageInfo = document.querySelector("#pageInfo");
+
+            // --- SAYFALI LİSTE ---
+            async function loadList(page = 1) {
+                tbody.innerHTML =
+                    "<tr><td colspan='7' class='text-center'>Yükleniyor...</td></tr>";
+
+                try {
+                    const res = await fetch(`/FastPayment/GetAll?page=${page}&pageSize=${pageSize}`);
+                    const json = await res.json();
+
+                    const data = json.data || [];
+
+                    pageInfo.textContent = `Sayfa ${page}`;
+
+                    tbody.innerHTML = "";
+
+                    if (data.length === 0) {
+                        tbody.innerHTML =
+                            "<tr><td colspan='7' class='text-center text-muted'>Kayıt bulunamadı</td></tr>";
+                        return;
+                    }
+
+                    data.forEach(x => {
+                        const rowId = `${x.kasaKod}_${x.belgeNo}_${x.cariKod}_${x.islemTarihi}`;
+                        const tarih = x.islemTarihi ? x.islemTarihi.substring(0, 10) : "";
+                        
+                        tbody.innerHTML += `
+                            <tr class="payment-row" 
+                                data-kasa="${x.kasaKod}" 
+                                data-belge="${x.belgeNo}" 
+                                data-cari="${x.cariKod}" 
+                                data-tarih="${tarih}">
+                                <td>${x.kasaKod}</td>
+                                <td>${x.belgeNo}</td>
+                                <td>${x.cariKod}</td>
+                                <td>${tarih}</td>
+                                <td>${x.dovtip}</td>
+                                <td>${x.tahsilatKalemAdedi}</td>
+                                <td class="text-center" style="cursor:pointer">⤵</td>
+                            </tr>
+
+                            <tr class="pivot-row d-none" id="pivot-${rowId.replace(/[^a-zA-Z0-9]/g, '_')}">
+                                <td colspan="7">
+                                    <div class="p-2 text-center text-muted">Yükleniyor...</div>
+                                </td>
+                            </tr>
+                        `;
+                    });
+
+                } catch (err) {
+                    tbody.innerHTML =
+                        "<tr><td colspan='7' class='text-center text-danger'>Hata: " + err.message + "</td></tr>";
+                }
+            }
+
+            await loadList(currentPage);
+
+            // Sayfa değiştirme
+            document.getElementById("prevPage").addEventListener("click", async () => {
+                if (currentPage > 1) {
+                    currentPage--;
+                    await loadList(currentPage);
+                }
+            });
+
+            document.getElementById("nextPage").addEventListener("click", async () => {
+                currentPage++;
+                await loadList(currentPage);
+            });
+
+            // --- SATIRA TIKLAYINCA PIVOT DETAYI AÇ/KAPA ---
+            document.addEventListener("click", async e => {
+                const tr = e.target.closest(".payment-row");
+                if (!tr) return;
+
+                const kasaKod = tr.dataset.kasa;
+                const belgeNo = tr.dataset.belge;
+                const cariKod = tr.dataset.cari;
+                const tarih = tr.dataset.tarih;
+
+                const rowId = `${kasaKod}_${belgeNo}_${cariKod}_${tarih}`.replace(/[^a-zA-Z0-9]/g, '_');
+                const pivot = document.getElementById(`pivot-${rowId}`);
+                const pivotTd = pivot.querySelector("td");
+
+                // açık ise kapat
+                if (!pivot.classList.contains("d-none")) {
+                    pivot.classList.add("d-none");
+                    return;
+                }
+
+                // önce kapalıysa aç
+                pivot.classList.remove("d-none");
+                pivotTd.innerHTML = "<div class='p-2 text-muted'>Yükleniyor...</div>";
+
+                // detay getir
+                try {
+                    const res = await fetch(`/FastPayment/Detail/${kasaKod}/${belgeNo}/${cariKod}/${tarih}`);
+                    const json = await res.json();
+
+                    if (!json.success) {
+                        pivotTd.innerHTML =
+                            `<div class='text-danger p-2'>${json.message}</div>`;
+                        return;
+                    }
+
+                    const data = json.data;
+                    const tahsilats = data.tahsilats || [];
+
+                    if (tahsilats.length === 0) {
+                        pivotTd.innerHTML =
+                            "<div class='p-2 text-muted text-center'>Tahsilat satırı bulunamadı</div>";
+                        return;
+                    }
+
+                    let html = `
+                        <div class="fw-bold mb-2">
+                            <strong>Kasa:</strong> ${data.kasaKod} |
+                            <strong>Belge No:</strong> ${data.belgeNo} |
+                            <strong>Cari:</strong> ${data.cariKod} |
+                            <strong>Tarih:</strong> ${data.islemTarihi.substring(0, 10)} |
+                            <strong>Döviz:</strong> ${data.dovtip}
+                        </div>
+
+                        <table class="table table-sm table-bordered mb-0">
+                            <thead class="table-warning">
+                                <tr>
+                                    <th>Sözleşme</th>
+                                    <th>Tutar</th>
+                                    <th>Referans</th>
+                                    <th>PLA Kodu</th>
+                                    <th>Proje</th>
+                                    <th>Taksit</th>
+                                    <th>Döviz Tutar</th>
+                                    <th>Kur</th>
+                                    <th>Tip</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    `;
+
+                    tahsilats.forEach(t => {
+                        html += `
+                            <tr class="tahsilat-row" 
+                                data-kasa="${kasaKod}"
+                                data-belge="${belgeNo}"
+                                data-cari="${cariKod}"
+                                data-tarih="${tarih}"
+                                data-ref="${t.referans_Kodu}">
+                                <td>${t.sozKodu}</td>
+                                <td class="editable-tutar" contenteditable="true" data-old="${t.tutar}">${t.tutar.toFixed(2)}</td>
+                                <td>${t.referans_Kodu}</td>
+                                <td>${t.plA_KODU}</td>
+                                <td>${t.proje_Kodu}</td>
+                                <td>${t.taksitSay}</td>
+                                <td>${t.dovTutar.toFixed(2)}</td>
+                                <td>${t.kur.toFixed(4)}</td>
+                                <td>${t.tahsilatTipi}</td>
+                            </tr>
+                        `;
+                    });
+
+                    html += "</tbody></table>";
+
+                    pivotTd.innerHTML = html;
+
+                } catch (err) {
+                    pivotTd.innerHTML =
+                        "<div class='p-2 text-danger text-center'>Hata oluştu</div>";
+                }
+            });
+
+            // --- INLINE TUTAR DÜZENLEME ---
+            document.addEventListener("focusin", e => {
+                const td = e.target.closest(".editable-tutar");
+                if (!td) return;
+                
+                const raw = (td.textContent || "").trim().replace(",", ".");
+                const v = parseFloat(raw);
+                td.dataset.old = isNaN(v) ? "0" : v.toString();
+            }, true);
+
+            document.addEventListener("blur", async e => {
+                const td = e.target.closest(".editable-tutar");
+                if (!td) return;
+
+                const tr = td.closest(".tahsilat-row");
+
+                const rawNew = (td.textContent || "").trim().replace(",", ".");
+                let newVal = parseFloat(rawNew);
+                if (isNaN(newVal)) newVal = 0;
+
+                const oldVal = parseFloat(td.dataset.old || "0");
+
+                // Hücreyi formatla
+                td.textContent = newVal.toFixed(2);
+
+                if (newVal === oldVal) {
+                    return; // değişiklik yok
+                }
+
+                const kasaKod = tr.dataset.kasa;
+                const belgeNo = tr.dataset.belge;
+                const cariKod = tr.dataset.cari;
+                const tarih = tr.dataset.tarih;
+                const referans = tr.dataset.ref;
+
+                const dto = {
+                    KasaKod: kasaKod,
+                    CariKod: cariKod,
+                    BelgeNo: belgeNo,
+                    IslemTarihi: tarih,
+                    Referans_Kodu: referans,
+                    EskiTutar: oldVal,
+                    YeniTutar: newVal
+                };
+
+                try {
+                    const res = await fetch("/FastPayment/UpdateLine", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(dto)
+                    });
+
+                    const json = await res.json();
+
+                    if (json.success) {
+                        td.style.backgroundColor = "#d4edda";
+                        // Başarılı güncellemeden sonra data-old'u güncelle
+                        td.dataset.old = newVal.toString();
+                    } else {
+                        td.style.backgroundColor = "#f8d7da";
+                        td.textContent = oldVal.toFixed(2);
+                    }
+
+                    setTimeout(() => td.style.backgroundColor = "", 1500);
+
+                } catch (err) {
+                    console.error(err);
+                    td.style.backgroundColor = "#f8d7da";
+                    td.textContent = oldVal.toFixed(2);
+                    setTimeout(() => td.style.backgroundColor = "", 1500);
+                }
+
+            }, true);
+
+        });
+    </script>
+}

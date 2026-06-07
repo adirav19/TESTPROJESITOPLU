@@ -1,0 +1,353 @@
+@model dynamic
+
+<h2>İş Emrinden Üretim Sonu Kaydı Oluştur</h2>
+
+<!-- ========================================================== -->
+<!--  İŞ EMRİ GETİR FORMU                                       -->
+<!-- ========================================================== -->
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+        <strong>İş Emri Seç</strong>
+    </div>
+    <div class="card-body">
+        <div class="mb-3">
+            <label>İş Emri Listesi</label>
+            <select id="ddlIsEmirleri" class="form-select">
+                <option value="">-- İş emri seçin --</option>
+            </select>
+        </div>
+        <button type="button" id="btnGetir" class="btn btn-primary">İş Emrini Getir</button>
+    </div>
+</div>
+
+@if (Model == null)
+{
+    <div class="alert alert-info">Yukarıdan bir iş emri seçip "İş Emrini Getir" butonuna tıklayın.</div>
+}
+else
+{
+    <hr />
+
+    <!-- ========================================================== -->
+    <!--  ÜST BİLGİ FORMU                                            -->
+    <!-- ========================================================== -->
+    <h4>Üst Bilgiler</h4>
+
+    <form id="headerForm">
+        <div class="row g-3">
+
+            <div class="col-md-3">
+                <label>Fiş No</label>
+                <input id="UretSon_FisNo" class="form-control" value="@Model.UretSon_FisNo" disabled />
+            </div>
+
+            <div class="col-md-3">
+                <label>Tarih</label>
+                <input id="UretSon_Tarih" type="date" class="form-control"
+                       value="@Model.UretSon_Tarih?.ToString("yyyy-MM-dd")" />
+            </div>
+
+            <div class="col-md-3">
+                <label>İş Emri / Sipariş</label>
+                <input id="UretSon_SipNo" class="form-control" value="@Model.UretSon_SipNo" disabled />
+            </div>
+
+            <div class="col-md-3">
+                <label>Depo Önceliği</label>
+                <input id="DepoOnceligi" class="form-control" value="@Model.DepoOnceligi" />
+            </div>
+
+            <div class="col-md-4">
+                <label>Mamul Kodu</label>
+                <input id="UretSon_Mamul" class="form-control" value="@Model.UretSon_Mamul" />
+            </div>
+
+            <div class="col-md-2">
+                <label>Miktar</label>
+                <input id="UretSon_Miktar" class="form-control" value="@Model.UretSon_Miktar" />
+            </div>
+
+            <div class="col-md-2">
+                <label>2. Miktar</label>
+                <input id="UretSon_MalY1" class="form-control" value="@Model.UretSon_MalY1" />
+            </div>
+
+            <div class="col-md-4">
+                <label>Açıklama</label>
+                <input id="Aciklama" class="form-control" value="@Model.Aciklama" />
+            </div>
+
+            <div class="col-md-3">
+                <label>L. Depo</label>
+                <input id="LDepo" class="form-control" value="@Model.UretSon_Depo" />
+            </div>
+
+            <div class="col-md-3">
+                <label>Çıkış Depo</label>
+                <input id="CikisDepo" class="form-control" value="@Model.Cikis_Depo" />
+            </div>
+
+            <div class="col-md-3">
+                <label>Proje Kodu</label>
+                <input id="C_Yedek1" class="form-control" value="@Model.C_Yedek1" />
+            </div>
+
+            <div class="col-md-3">
+                <label>Ek Alan</label>
+                <input id="C_Yedek2" class="form-control" value="@Model.C_Yedek2" />
+            </div>
+
+        </div>
+    </form>
+
+    <button class="btn btn-success mt-3" id="produceBtn">Fiş Üret</button>
+
+    <hr />
+
+    <!-- ========================================================== -->
+    <!--  ALT KALEM TABLOSU                                         -->
+    <!-- ========================================================== -->
+    <div id="kalemContainer" style="display:none;">
+        <h4 class="mt-4">Kalemler</h4>
+
+        <table class="table table-bordered" id="kalemTable">
+            <thead class="table-dark">
+                <tr>
+                    <th>Stok</th>
+                    <th>G/C</th>
+                    <th>Depo</th>
+                    <th>Miktar</th>
+                    <th>2. Miktar</th>
+                    <th>Açıklama</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+
+        <!-- Full JSON'un saklandığı alan -->
+        <div id="fullJsonHolder" style="display:none;"></div>
+    </div>
+}
+
+@section Scripts {
+    <script>
+
+        ///////////////////////////////////////////////////////////////
+        // SAYFA AÇILINCA → İŞ EMİRLERİ DROPDOWN'A DOLDUR
+        ///////////////////////////////////////////////////////////////
+        document.addEventListener("DOMContentLoaded", function () {
+
+            // ProductionOrder/Index sayfasından direkt veriyi çek
+            fetch('/ProductionOrder')
+                .then(r => r.text())
+                .then(html => {
+                    let parser = new DOMParser();
+                    let doc = parser.parseFromString(html, 'text/html');
+                    let rows = doc.querySelectorAll('tr[data-full]');
+
+                    let ddl = document.getElementById("ddlIsEmirleri");
+                    ddl.innerHTML = `<option value="">-- İş emri seçin --</option>`;
+
+                    if (rows.length === 0) {
+                        console.warn("⚠ İş emri bulunamadı!");
+                        return;
+                    }
+
+                    rows.forEach(row => {
+                        let data = JSON.parse(row.getAttribute('data-full'));
+                        
+                        let opt = document.createElement("option");
+                        opt.value = data.IsEmriNo;
+                        opt.textContent = data.IsEmriNo;
+
+                        ddl.appendChild(opt);
+                    });
+
+                    console.log(`✅ ${rows.length} adet iş emri yüklendi`);
+                })
+                .catch(err => {
+                    console.error("❌ İş emirleri yüklenemedi:", err);
+                    alert("İş emirleri yüklenirken hata oluştu!");
+                });
+
+        });
+
+        ///////////////////////////////////////////////////////////////
+        // İŞ EMRİNİ GETİR BUTONU
+        ///////////////////////////////////////////////////////////////
+        document.getElementById("btnGetir")?.addEventListener("click", function () {
+            
+            let isEmriNo = document.getElementById("ddlIsEmirleri").value;
+            
+            if (!isEmriNo) {
+                alert("⚠ Lütfen bir iş emri seçin!");
+                return;
+            }
+
+            window.location.href = "/FinishedGoodsReceiptWChanges/CreateFromProductionOrder?isEmriNo=" + isEmriNo;
+        });
+
+        ///////////////////////////////////////////////////////////////
+        // FİŞ ÜRET
+        ///////////////////////////////////////////////////////////////
+        document.getElementById("produceBtn")?.addEventListener("click", function () {
+
+            let fullJson = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model));
+
+            fullJson.UretSon_Tarih = document.getElementById("UretSon_Tarih").value;
+            fullJson.UretSon_Mamul = document.getElementById("UretSon_Mamul").value;
+            fullJson.UretSon_Miktar = parseFloat(document.getElementById("UretSon_Miktar").value);
+            fullJson.UretSon_MalY1 = parseFloat(document.getElementById("UretSon_MalY1").value);
+            fullJson.Aciklama = document.getElementById("Aciklama").value;
+
+            fullJson.UretSon_Depo = parseInt(document.getElementById("LDepo").value);
+            fullJson.Cikis_Depo = parseInt(document.getElementById("CikisDepo").value);
+
+            fullJson.C_Yedek1 = document.getElementById("C_Yedek1").value;
+            fullJson.C_Yedek2 = document.getElementById("C_Yedek2").value;
+
+            fetch('/FinishedGoodsReceiptWChanges/Produce', {
+                method: 'POST',
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(fullJson)
+            })
+            .then(r => r.json())
+            .then(res => {
+
+                if (res.IsSuccessful !== true) {
+                    alert("❌ Hata: " + res.ErrorDesc);
+                    return;
+                }
+
+                alert("✅ Fiş başarıyla üretildi!");
+
+                document.getElementById("fullJsonHolder").innerText =
+                    JSON.stringify(res.Data);
+
+                fillKalemTable(res.Data.Kalem);
+
+                document.getElementById("kalemContainer").style.display = "";
+            })
+            .catch(err => {
+                console.error("❌ Fiş üretilirken hata:", err);
+                alert("Fiş üretilirken hata oluştu!");
+            });
+
+        });
+
+        ///////////////////////////////////////////////////////////////
+        // ALT KALEM TABLOSU
+        ///////////////////////////////////////////////////////////////
+        function fillKalemTable(kalemList) {
+
+            let tbody = document.querySelector("#kalemTable tbody");
+            tbody.innerHTML = "";
+
+            kalemList.forEach(k => {
+
+                let tr = document.createElement("tr");
+                tr.setAttribute("data-inckey", k.IncKeyNo);
+
+                tr.innerHTML = `
+                    <td>${k.StokKodu}</td>
+                    <td>${k.GC}</td>
+                    <td>${k.DepoKodu}</td>
+
+                    <td class="editable" data-field="Miktar">${k.Miktar}</td>
+                    <td class="editable" data-field="Miktar2">${k.Miktar2}</td>
+
+                    <td>${k.Aciklama}</td>
+                `;
+
+                tbody.appendChild(tr);
+            });
+
+            activateInlineEdit();
+        }
+
+        ///////////////////////////////////////////////////////////////
+        // INLINE EDIT
+        ///////////////////////////////////////////////////////////////
+        function activateInlineEdit() {
+
+            document.querySelectorAll("#kalemTable .editable").forEach(cell => {
+
+                cell.addEventListener("click", function () {
+
+                    if (this.querySelector("input"))
+                        return;
+
+                    let oldValue = this.innerText;
+                    let input = document.createElement("input");
+                    input.classList.add("form-control");
+                    input.value = oldValue;
+
+                    this.innerHTML = "";
+                    this.appendChild(input);
+                    input.focus();
+
+                    input.addEventListener("blur", () => saveCell(this, oldValue));
+                    input.addEventListener("keydown", e => {
+                        if (e.key === "Enter")
+                            saveCell(this, oldValue);
+                    });
+                });
+            });
+        }
+
+        ///////////////////////////////////////////////////////////////
+        // INLINE EDIT → SAVE
+        ///////////////////////////////////////////////////////////////
+        function saveCell(cell, oldValue) {
+
+            let input = cell.querySelector("input");
+            let newValue = input.value;
+
+            if (oldValue == newValue) {
+                cell.innerHTML = oldValue;
+                return;
+            }
+
+            let tr = cell.closest("tr");
+            let incKey = parseInt(tr.dataset.inckey);
+
+            let fullJson = JSON.parse(document.getElementById("fullJsonHolder").innerText);
+
+            fullJson.Kalem.forEach(k => {
+                if (k.IncKeyNo === incKey) {
+                    k[cell.dataset.field] = parseFloat(newValue);
+                }
+            });
+
+            fetch('/FinishedGoodsReceiptWChanges/Save', {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(fullJson)
+            })
+            .then(r => r.json())
+            .then(res => {
+
+                if (res.IsSuccessful === true) {
+
+                    document.getElementById("fullJsonHolder").innerText =
+                        JSON.stringify(fullJson);
+
+                    cell.innerHTML = newValue;
+
+                    cell.style.backgroundColor = "#c4ffda";
+                    setTimeout(() => cell.style.backgroundColor = "", 600);
+                }
+                else {
+                    alert("❌ Kaydedilemedi: " + res.ErrorDesc);
+                    cell.innerHTML = oldValue;
+                }
+            })
+            .catch(err => {
+                console.error("❌ Kayıt hatası:", err);
+                alert("Kayıt sırasında hata oluştu!");
+                cell.innerHTML = oldValue;
+            });
+        }
+
+    </script>
+}

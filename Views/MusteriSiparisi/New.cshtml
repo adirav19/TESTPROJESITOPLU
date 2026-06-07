@@ -1,0 +1,268 @@
+@{
+    ViewData["Title"] = "Yeni Müşteri Siparişi";
+}
+
+<h2>Yeni Müşteri Siparişi (docType = 7)</h2>
+
+<div class="card">
+    <div class="card-body">
+
+        <div class="row mb-3">
+            <div class="col-md-2">
+                <label class="form-label">Seri *</label>
+                <input id="seri" class="form-control" placeholder="Örn: S" value="S" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Fiş No (FATIRS_NO) *</label>
+                <input id="fisNo" class="form-control" placeholder="000000000000123" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Cari Kodu *</label>
+                <input id="cariKod" class="form-control" placeholder="Cari kodu" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Tarih *</label>
+                <input id="tarih" type="date" class="form-control" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Teslim Tarihi *</label>
+                <input id="tesTarih" type="date" class="form-control" />
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-2">
+                <label class="form-label">Şube Kodu</label>
+                <input id="subeKodu" class="form-control" value="0" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Özel Kod</label>
+                <input id="ozelKod" class="form-control" value="1" readonly />
+                <small class="text-muted">Sabit: 1</small>
+            </div>
+        </div>
+
+        <hr />
+
+        <h5>Kalemler</h5>
+
+        <table class="table table-sm table-bordered" id="kalemTable">
+            <thead class="table-light">
+                <tr>
+                    <th>Stok Kodu *</th>
+                    <th>Depo Kodu (D.Kd) *</th>
+                    <th>Miktar *</th>
+                    <th>Birim Fiyat *</th>
+                    <th>Tutar</th>
+                    <th style="width:40px;"></th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Başlangıçta tek satır -->
+                <tr>
+                    <td><input class="form-control form-control-sm stokKodu" placeholder="Stok kodu" /></td>
+                    <td><input class="form-control form-control-sm depoKodu" value="10" /></td>
+                    <td><input class="form-control form-control-sm miktar" value="1" /></td>
+                    <td><input class="form-control form-control-sm bf" value="0" /></td>
+                    <td class="tutar">0.00</td>
+                    <td class="text-center">
+                        <button type="button" class="btn btn-sm btn-danger btnRemoveLine">X</button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <button type="button" class="btn btn-sm btn-secondary mb-3" id="btnAddLine">+ Kalem Ekle</button>
+
+        <div class="mt-3">
+            <button type="button" class="btn btn-primary" id="btnSave">Siparişi Oluştur</button>
+            <a href="@Url.Action("List", "MusteriSiparisi")" class="btn btn-outline-secondary">Listeye Dön</a>
+        </div>
+
+        <div id="resultArea" class="mt-3" style="display:none;">
+            <h5>API Yanıtı:</h5>
+            <pre id="resultJson" style="white-space:pre-wrap; background:#f5f5f5; padding:10px;"></pre>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // ==============================
+        //  Bugünün tarihini otomatik doldur
+        // ==============================
+        window.addEventListener("DOMContentLoaded", function () {
+            let today = new Date().toISOString().split('T')[0];
+            document.getElementById("tarih").value = today;
+            document.getElementById("tesTarih").value = today;
+        });
+
+        // ==============================
+        //  Dinamik Kalem Satırı Ekle / Sil
+        // ==============================
+        document.getElementById("btnAddLine").addEventListener("click", function () {
+            let tbody = document.querySelector("#kalemTable tbody");
+            let tr = document.createElement("tr");
+            tr.innerHTML = `
+                <td><input class="form-control form-control-sm stokKodu" placeholder="Stok kodu" /></td>
+                <td><input class="form-control form-control-sm depoKodu" value="10" /></td>
+                <td><input class="form-control form-control-sm miktar" value="1" /></td>
+                <td><input class="form-control form-control-sm bf" value="0" /></td>
+                <td class="tutar">0.00</td>
+                <td class="text-center">
+                    <button type="button" class="btn btn-sm btn-danger btnRemoveLine">X</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+            attachRemoveHandlers();
+            attachCalculateHandlers();
+        });
+
+        function attachRemoveHandlers() {
+            document.querySelectorAll(".btnRemoveLine").forEach(btn => {
+                btn.onclick = function () {
+                    let tbody = document.querySelector("#kalemTable tbody");
+                    if (tbody.querySelectorAll("tr").length > 1) {
+                        let tr = this.closest("tr");
+                        tr.parentNode.removeChild(tr);
+                    } else {
+                        alert("En az bir kalem satırı olmalıdır.");
+                    }
+                };
+            });
+        }
+        attachRemoveHandlers();
+
+        // ==============================
+        //  Tutar Hesaplama (Miktar × Fiyat)
+        // ==============================
+        function attachCalculateHandlers() {
+            document.querySelectorAll("#kalemTable tbody tr").forEach(tr => {
+                let miktarInput = tr.querySelector(".miktar");
+                let bfInput = tr.querySelector(".bf");
+                let tutarCell = tr.querySelector(".tutar");
+
+                function calculate() {
+                    let miktar = parseFloat(miktarInput.value.replace(",", ".")) || 0;
+                    let bf = parseFloat(bfInput.value.replace(",", ".")) || 0;
+                    tutarCell.innerText = (miktar * bf).toFixed(2);
+                }
+
+                miktarInput.addEventListener("input", calculate);
+                bfInput.addEventListener("input", calculate);
+
+                calculate(); // İlk yükleme
+            });
+        }
+        attachCalculateHandlers();
+
+        // ==============================
+        //  SİPARİŞ OLUŞTUR (POST /MusteriSiparisi/Create)
+        // ==============================
+        document.getElementById("btnSave").addEventListener("click", function () {
+
+            let seri = document.getElementById("seri").value.trim();
+            let fisNo = document.getElementById("fisNo").value.trim();
+            let cariKod = document.getElementById("cariKod").value.trim();
+            let tarih = document.getElementById("tarih").value.trim();
+            let tesTarih = document.getElementById("tesTarih").value.trim();
+            let subeKodu = document.getElementById("subeKodu").value.trim();
+            let ozelKod = document.getElementById("ozelKod").value.trim();
+
+            // Zorunlu alan kontrolleri
+            if (!seri) {
+                alert("Seri boş olamaz.");
+                return;
+            }
+            if (!fisNo) {
+                alert("Fiş No boş olamaz.");
+                return;
+            }
+            if (!cariKod) {
+                alert("Cari Kodu boş olamaz.");
+                return;
+            }
+            if (!tarih) {
+                alert("Tarih boş olamaz.");
+                return;
+            }
+            if (!tesTarih) {
+                alert("Teslim Tarihi boş olamaz.");
+                return;
+            }
+
+            // Tarihleri API formatına çevir (YYYY-MM-DD HH:MM:SS)
+            let tarihFormatted = tarih + " 00:00:00";
+            let tesTarihFormatted = tesTarih + " 00:00:00";
+
+            let kalems = [];
+            document.querySelectorAll("#kalemTable tbody tr").forEach(tr => {
+                let stokKodu = tr.querySelector(".stokKodu").value.trim();
+                let depoKodu = tr.querySelector(".depoKodu").value.trim();
+                let miktar = tr.querySelector(".miktar").value.trim();
+                let bf = tr.querySelector(".bf").value.trim();
+
+                if (!stokKodu) return; // stok girilmeyen satırı atla
+
+                kalems.push({
+                    StokKodu: stokKodu,
+                    DEPO_KODU: depoKodu ? parseInt(depoKodu) : 10,
+                    STra_GCMIK: miktar ? parseFloat(miktar.replace(",", ".")) : 0,
+                    STra_BF: bf ? parseFloat(bf.replace(",", ".")) : 0
+                });
+            });
+
+            if (kalems.length === 0) {
+                alert("En az bir stok kalemi girmeniz gerekiyor.");
+                return;
+            }
+
+            // ✅ Zorunlu alanları içeren JSON payload
+            let payload = {
+                FaturaTip: 7,                  // Müşteri Siparişi
+                Seri: seri,
+                SonNumaraYazilsin: false,
+                FatUst: {
+                    FATIRS_NO: fisNo,
+                    CariKod: cariKod,
+                    Tarih: tarihFormatted,
+                    Tes_Tarih: tesTarihFormatted,
+                    Sube_Kodu: subeKodu ? parseInt(subeKodu) : 0,
+                    OZEL_KOD: ozelKod || "1",
+                    KDV_DAHILMI: true,
+                    Tip: 7,
+                    TIPI: 0,
+                    AMBHARTUR: 0
+                },
+                Kalems: kalems
+            };
+
+            console.log("Gönderilen payload:", payload);
+
+            fetch('/MusteriSiparisi/Create', {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            })
+                .then(r => r.json())
+                .then(res => {
+                    document.getElementById("resultArea").style.display = "block";
+                    document.getElementById("resultJson").textContent = JSON.stringify(res, null, 2);
+
+                    if (res.IsSuccessful === true) {
+                        alert("✅ Sipariş başarıyla oluşturuldu! Fiş No: " + fisNo);
+                        
+                        // İstersen otomatik listeye yönlendirebilirsin:
+                        // setTimeout(() => { window.location.href = '/MusteriSiparisi/List'; }, 1500);
+                    } else {
+                        alert("❌ Kayıt başarısız: " + (res.ErrorDesc || "Bilinmeyen hata"));
+                    }
+                })
+                .catch(err => {
+                    document.getElementById("resultArea").style.display = "block";
+                    document.getElementById("resultJson").textContent = "HATA: " + err;
+                    alert("Hata oluştu: " + err);
+                });
+        });
+    </script>
+}

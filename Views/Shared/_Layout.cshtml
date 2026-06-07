@@ -25,17 +25,122 @@
                         <li class="nav-item">
                             <a class="nav-link" href="/FinishedGoods/Index">Üretim Fişleri</a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/ProductionOrder/Index">İş Emri</a>
+                        </li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="suskMenu" role="button" data-bs-toggle="dropdown">
+                                SUSK
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="suskMenu">
+                                <li><a class="dropdown-item" href="/FinishedGoodsReceiptWChanges/Index">➕ Fiş Getir (ID ile)</a></li>
+                                <li><a class="dropdown-item" href="/FinishedGoodsReceiptWChanges/List">📋 Pivot Liste</a></li>
+                                <li><a class="dropdown-item" href="/FinishedGoodsReceiptWChanges/CreateFromProductionOrder">İş Emrinden Getir</a></li>
+                            </ul>
+                        </li>
+                       
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="ThsMenu" role="button" data-bs-toggle="dropdown">
+                                Hızlı Tahsilat
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="ThsMenu">
+                                <li><a class="dropdown-item" href="/FastPayment/Index">index</a></li>
+                                <li><a class="dropdown-item" href="/FastPayment/List">📋 Pivot Liste</a></li>
+                            </ul>
+                        </li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="DatMenu" role="button" data-bs-toggle="dropdown">
+                                Dat
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="DatMenu">
+                                <li><a class="dropdown-item" href="/DepoTransfer/New">Yeni</a></li>
+                                <li><a class="dropdown-item" href="/DepoTransfer/List">📋 Pivot Liste</a></li>
+                            </ul>
+                        </li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="sqlMenu" role="button" data-bs-toggle="dropdown">
+                                SQL
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="sqlMenu">
+                                <li><a class="dropdown-item" href="/SqlQuery/Index">index</a></li>
+                               
+                            </ul>
+                        </li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="FlowMenu" role="button" data-bs-toggle="dropdown">
+                                Akış
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="FlowMenu">
+                                <li><a class="dropdown-item" href="/ProductionWorkflow/Index">🏭 Üretim Workflow</a></li>
+                            </ul>
+                        </li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="SipMenu" role="button" data-bs-toggle="dropdown">
+                               Müşteri Siparişi
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="SipMenu">
+                                <li><a class="dropdown-item" href="/MusteriSiparisi/New">Müşteri Sip Girişi</a></li>
+                                <li><a class="dropdown-item" href="/MusteriSiparisi/List">📋 Pivot Liste</a></li>
+                                <li><a class="dropdown-item" href="/MusteriSiparisi/SiparisYonetimi">Sip Yönetimi</a></li>
+                            </ul>
+                        </li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="FullMenu" role="button" data-bs-toggle="dropdown">
+                                Full Akış
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="FullMenu">
+                                <li><a class="dropdown-item" href="/FullProductionWorkflow/Index">FullAkış</a></li>
+                            </ul>
+                        </li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="ReceteMenu" role="button" data-bs-toggle="dropdown">
+                                Reçete
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="ReceteMenu">
+                                <li><a class="dropdown-item" href="/BOM/Index">Reçete</a></li>
+                                <li><a class="dropdown-item" href="/BOM/New">Yeni reçete</a></li>
+                            </ul>
+                        </li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="AmbarMenu" role="button" data-bs-toggle="dropdown">
+                                Ambar
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="AmbarMenu">
+                                <li><a class="dropdown-item" href="/AmbarCikis/List">Liste</a></li>
+                                <li><a class="dropdown-item" href="/AmbarCikis/New">Yeni çıkış fişi</a></li>
+                            </ul>
+                        </li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="UAKMenu" role="button" data-bs-toggle="dropdown">
+                                Ambar
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="UAKMenu">
+                                <li><a class="dropdown-item" href="/ProductionFlow/Index">index</a></li>
+                       
+                            </ul>
+                        </li>
+                        
                     </ul>
                 </div>
             </div>
         </nav>
     </header>
 
-    <div class="container my-4">
-        <main role="main">
+    @* FullWidth özelliği varsa container kullanma *@
+    @if (ViewData["FullWidth"] != null && (bool)ViewData["FullWidth"])
+    {
+        <main role="main" style="padding: 0; margin: 0;">
             @RenderBody()
         </main>
-    </div>
+    }
+    else
+    {
+        <div class="container my-4">
+            <main role="main">
+                @RenderBody()
+            </main>
+        </div>
+    }
 
     <footer class="text-center mt-5 py-3 bg-light">
         <div class="container">

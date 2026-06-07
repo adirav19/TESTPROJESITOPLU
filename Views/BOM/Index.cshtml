@@ -1,0 +1,682 @@
+﻿@{
+    ViewData["Title"] = "Reçete Yönetimi";
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>📋 Reçete Yönetimi (BOM)</h2>
+        <a href="/BOM/New" class="btn btn-success">
+            ➕ Yeni Reçete Oluştur
+        </a>
+    </div>
+
+    <table id="bomTable" class="table table-bordered table-hover">
+        <thead class="table-light">
+            <tr>
+                <th>Mamul Kodu</th>
+                <th>Reçete Toplamı</th>
+                <th>Ölçü Birimi</th>
+                <th style="width:50px">📌</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr><td colspan="4" class="text-center">Yükleniyor...</td></tr>
+        </tbody>
+    </table>
+
+    <div class="d-flex justify-content-between mt-3">
+        <button id="prevPage" class="btn btn-secondary btn-sm">⬅ Önceki</button>
+        <span id="pageInfo" class="fw-bold"></span>
+        <button id="nextPage" class="btn btn-secondary btn-sm">İleri ➡</button>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener("DOMContentLoaded", async () => {
+
+            let currentPage = 1;
+            const pageSize = 10;
+
+            const tbody = document.querySelector("#bomTable tbody");
+            const pageInfo = document.querySelector("#pageInfo");
+
+            // --- SAYFALI LİSTE ---
+            async function loadList(page = 1) {
+                tbody.innerHTML =
+                    "<tr><td colspan='4' class='text-center'>Yükleniyor...</td></tr>";
+
+                try {
+                    const res = await fetch(`/BOM/GetAll?page=${page}&pageSize=${pageSize}`);
+                    const json = await res.json();
+
+                    const data = json.data || [];
+                    const total = json.totalCount || data.length;
+
+                    pageInfo.textContent = `Sayfa ${page}`;
+
+                    tbody.innerHTML = "";
+
+                    if (data.length === 0) {
+                        tbody.innerHTML =
+                            "<tr><td colspan='4' class='text-center text-muted'>Kayıt bulunamadı</td></tr>";
+                        return;
+                    }
+
+                    data.forEach(x => {
+                        tbody.innerHTML += `
+                            <tr class="bom-row" data-id="${x.mamulKodu}">
+                                <td>${x.mamulKodu}</td>
+                                <td>${x.receteToplami}</td>
+                                <td>${x.olcuBirimi}</td>
+                                <td class="text-center" style="cursor:pointer">⤵</td>
+                            </tr>
+
+                            <tr class="pivot-row d-none" id="pivot-${x.mamulKodu}">
+                                <td colspan="4">
+                                    <div class="p-2 text-center text-muted">Yükleniyor...</div>
+                                </td>
+                            </tr>
+                        `;
+                    });
+
+                } catch (err) {
+                    tbody.innerHTML =
+                        "<tr><td colspan='4' class='text-center text-danger'>Hata: " + err.message + "</td></tr>";
+                }
+            }
+
+            await loadList(currentPage);
+
+            // Sayfa değiştirme
+            document.getElementById("prevPage").addEventListener("click", async () => {
+                if (currentPage > 1) {
+                    currentPage--;
+                    await loadList(currentPage);
+                }
+            });
+
+            document.getElementById("nextPage").addEventListener("click", async () => {
+                currentPage++;
+                await loadList(currentPage);
+            });
+
+
+            // --- SATIRA TIKLAYINCA PIVOT DETAYI AÇ/KAPA ---
+            document.addEventListener("click", async e => {
+                const tr = e.target.closest(".bom-row");
+                if (!tr) return;
+
+                const mamulKodu = tr.dataset.id;
+                const pivot = document.getElementById(`pivot-${mamulKodu}`);
+                const pivotTd = pivot.querySelector("td");
+
+                // açık ise kapat
+                if (!pivot.classList.contains("d-none")) {
+                    pivot.classList.add("d-none");
+                    return;
+                }
+
+                // önce kapalıysa aç
+                pivot.classList.remove("d-none");
+                pivotTd.innerHTML = "<div class='p-2 text-muted'>Yükleniyor...</div>";
+
+                // detay getir
+                try {
+                    const res = await fetch(`/BOM/Detail/${mamulKodu}`);
+                    const json = await res.json();
+
+                    if (!json.success) {
+                        pivotTd.innerHTML =
+                            `<div class='text-danger p-2'>${json.message}</div>`;
+                        return;
+                    }
+
+                    const data = json.data;
+                    const items = data.bomItemList || [];
+
+                    if (items.length === 0) {
+                        pivotTd.innerHTML =
+                            "<div class='p-2 text-muted text-center'>Reçete kalemi bulunamadı</div>";
+                        return;
+                    }
+
+                    let html = `
+                        <div class="fw-bold mb-3 bg-light p-3 rounded border">
+                            <div class="row align-items-center">
+                                <div class="col-md-10">
+                                    <strong>🏭 Mamul:</strong> <span class="text-primary">${data.prmMamulKodu}</span> |
+                                    <strong>Yapı Kod:</strong> ${data.mamulYapKod || '-'} |
+                                    <strong>📊 Reçete Toplamı:</strong>
+                                    <span class="editable-recete-toplam badge bg-warning text-dark fs-6"
+                                          contenteditable="true"
+                                          data-mamul="${mamulKodu}"
+                                          data-original="${data.receteToplami}"
+                                          style="cursor: text; padding: 8px 15px; min-width: 80px; display: inline-block;">
+                                        ${data.receteToplami.toFixed(3)}
+                                    </span>
+                                    <strong>${data.olcuBirimi}</strong> |
+                                    <strong>Kalem:</strong> ${data.receteSayisi} adet
+                                </div>
+                                <div class="col-md-2 text-end">
+                                    <span class="badge ${data.prmOprBil === 'H' ? 'bg-info' : 'bg-secondary'} fs-6">
+                                        ${data.prmOprBil === 'H' ? '🔗 Hiyerarşik' : '📝 Düz'}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <table class="table table-sm table-bordered mb-0">
+                            <thead class="table-info">
+                                <tr>
+                                    <th>Op No</th>
+                                    <th>Ham Kodu</th>
+                                    <th>Ham Adı</th>
+                                    <th>Miktar</th>
+                                    <th>Birim</th>
+                                    <th>Fire</th>
+                                    <th>Op Bilgi</th>
+                                    <th>Açıklama</th>
+                                    <th style="width:80px">İşlem</th>
+                                </tr>
+                            </thead>
+                            <tbody id="kalemler-${mamulKodu}">
+                    `;
+
+                           items.forEach((k, index) => {
+            html += `
+                <tr class="kalem-row"
+                    data-mamul="${mamulKodu}"
+                    data-ham="${k.ham_Kodu}"
+                    data-index="${index}"
+                    data-inckey="${k.incKeyNo || ""}"
+                    data-yapkod="${k.yapKod || ""}"
+                    data-config="${k.configCode || ""}"
+                >
+                    <td>${k.opNo}</td>
+                    <td><strong>${k.ham_Kodu}</strong></td>
+                    <td>${k.h_Stok_Adi}</td>
+
+                    <td class="editable-qty"
+                        contenteditable="true"
+                        data-original="${k.miktar}">
+                        ${k.miktar.toFixed(3)}
+                    </td>
+
+                    <td>${k.h_Olcu_Br1}</td>
+
+                    <td>${k.fireMik.toFixed(3)}</td>
+
+                    <td>
+                        <span class="badge ${k.opr_Bil === 'B' ? 'bg-primary' : 'bg-success'}">
+                            ${k.opr_Bil}
+                        </span>
+                    </td>
+
+                    <td class="text-muted">${k.aciklama || '-'}</td>
+
+                    <td class="text-center">
+                        <button class="btn btn-danger btn-sm btn-kalem-sil"
+                                data-mamul="${mamulKodu}"
+                                data-ham="${k.ham_Kodu}"
+                                data-index="${index}"
+                                data-inckey="${k.incKeyNo || ""}"
+                                data-yapkod="${k.yapKod || ""}"
+                                data-config="${k.configCode || ""}">
+                            🗑️
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+
+
+                    html += `
+                            </tbody>
+                        </table>
+
+                        <div class="mt-3 p-3 bg-light rounded border">
+                            <button class="btn btn-success btn-sm" id="btnKalemEkle-${mamulKodu}" data-mamul="${mamulKodu}">
+                                ➕ Yeni Kalem Ekle
+                            </button>
+                        </div>
+
+                        <div class="mt-3 alert alert-info">
+                            <strong>💡 İpucu:</strong>
+                            <span class="badge bg-warning text-dark">Reçete Toplamı</span> ve
+                            <span class="badge" style="background: #fffacd; color: #000;">Miktar</span> alanlarına tıklayıp düzenleyebilirsiniz.
+                        </div>`;
+
+                    pivotTd.innerHTML = html;
+
+                    // Kalem ekleme butonu event
+                    document.getElementById(`btnKalemEkle-${mamulKodu}`).addEventListener("click", () => {
+                        kalemEkleModal(mamulKodu);
+                    });
+
+                    // Kalem silme butonları event
+                    document.querySelectorAll(".btn-kalem-sil").forEach(btn => {
+                        btn.addEventListener("click", async (e) => {
+                            e.stopPropagation();
+                            const mamul = btn.dataset.mamul;
+                            const ham = btn.dataset.ham;
+                            const index = parseInt(btn.dataset.index);
+                            await kalemSil(mamul, ham, index);
+                        });
+                    });
+
+                } catch (err) {
+                    pivotTd.innerHTML =
+                        "<div class='p-2 text-danger text-center'>Hata oluştu: " + err.message + "</div>";
+                }
+            });
+
+
+            // KALEM SİL
+                   // --- KALEM SİL (EN DOĞRU YÖNTEM: POST DeleteBOMItem) ---
+             async function kalemSil(mamulKodu, hamKodu, kalemIndex) {
+            if (!confirm(`${hamKodu} kalemini silmek istediğinize emin misiniz?`)) {
+                return;
+            }
+
+            try {
+                // 1) MEVCUT BOM ÇEK
+                const getRes = await fetch(`/BOM/Detail/${mamulKodu}`);
+                const getJson = await getRes.json();
+
+                if (!getJson.success) {
+                    showToast("❌ Reçete bulunamadı", "danger");
+                    return;
+                }
+
+                const data = getJson.data;
+                const items = data.bomItemList || [];
+
+                // 2) Silinecek kalemi çıkar
+                const yeniKalemler = items.filter((_, idx) => idx !== kalemIndex);
+
+                if (yeniKalemler.length === 0) {
+                    showToast("❌ Reçetede en az 1 kalem olmalı", "danger");
+                    return;
+                }
+
+                // 3) PUT payload hazırlama
+                        const kalemListesi = yeniKalemler.map((k, idx) => ({
+            OpNo: k.opNo,
+            Opr_Bil: k.opr_Bil,
+            Ham_Kodu: k.ham_Kodu,
+            Miktar: k.miktar,
+            FireMik: k.fireMik,
+            IncKeyNo: k.incKeyNo,          // ZORUNLU
+            ConfigCode: k.configCode,      // ZORUNLU
+            YapKod: k.yapKod,              // ZORUNLU (NetOpenX'in içsel mappingi buradan yapılıyor)
+            SonOperasyon: (idx === yeniKalemler.length - 1)
+        }));
+
+
+                const payload = {
+                    PrmMamulKodu: mamulKodu,
+                    ReceteToplami: data.receteToplami,
+                    OlcuBirimi: data.olcuBirimi,
+                    BOMItemList: kalemListesi
+                };
+
+                // 4) PUT ile BOM’u güncelle
+                const putRes = await fetch(`/BOM/UpdateBOM`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+
+                const putJson = await putRes.json();
+
+                if (!putJson.success) {
+                    showToast("❌ Hata: " + putJson.message, "danger");
+                    return;
+                }
+
+                showToast(`✅ ${hamKodu} kalemi silindi`, "success");
+
+                // Pivot refresh
+                document.getElementById(`pivot-${mamulKodu}`).classList.add("d-none");
+                setTimeout(() => {
+                    document.querySelector(`.bom-row[data-id="${mamulKodu}"]`).click();
+                }, 600);
+
+            } catch (err) {
+                console.error("❌ Kalem silme hatası:", err);
+                showToast("❌ Kalem silinemedi", "danger");
+            }
+        }
+
+
+
+            // KALEM EKLE MODAL
+            function kalemEkleModal(mamulKodu) {
+                const modalHtml = `
+                    <div class="modal fade" id="kalemEkleModal" tabindex="-1">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header bg-success text-white">
+                                    <h5 class="modal-title">➕ Yeni Kalem Ekle - ${mamulKodu}</h5>
+                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="mb-3">
+                                        <label class="form-label">Op No <span class="text-danger">*</span></label>
+                                        <input type="text" id="newOpNo" class="form-control" placeholder="Örn: 0001">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Op Bilgi <span class="text-danger">*</span></label>
+                                        <select id="newOprBil" class="form-select">
+                                            <option value="B">B - Bileşen</option>
+                                            <option value="O">O - Operasyon</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Ham Kodu <span class="text-danger">*</span></label>
+                                        <input type="text" id="newHamKodu" class="form-control" placeholder="Örn: HM1">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Miktar <span class="text-danger">*</span></label>
+                                        <input type="number" id="newMiktar" class="form-control" step="0.001" value="1">
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                                    <button type="button" class="btn btn-success" id="btnKalemKaydet">💾 Kaydet</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                const oldModal = document.getElementById("kalemEkleModal");
+                if (oldModal) oldModal.remove();
+
+                document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+                const modal = new bootstrap.Modal(document.getElementById("kalemEkleModal"));
+                modal.show();
+
+                document.getElementById("btnKalemKaydet").addEventListener("click", async () => {
+                    const opNo = document.getElementById("newOpNo").value.trim();
+                    const oprBil = document.getElementById("newOprBil").value;
+                    const hamKodu = document.getElementById("newHamKodu").value.trim();
+                    const miktar = parseFloat(document.getElementById("newMiktar").value) || 0;
+
+                    if (!opNo || !hamKodu || miktar <= 0) {
+                        showToast("❌ Tüm alanları doldurun", "danger");
+                        return;
+                    }
+
+                    await kalemEkle(mamulKodu, { opNo, oprBil, hamKodu, miktar });
+                    modal.hide();
+                });
+            }
+
+                  // KALEM EKLE
+                     // --- YENİ KALEM EKLE (EN DOĞRU YÖNTEM: SADECE POST /BOM) ---
+        async function kalemEkle(mamulKodu, yeniKalem) {
+            try {
+                // 1) Üst bilgileri almak için mevcut reçeteyi getiriyoruz
+                const getRes = await fetch(`/BOM/Detail/${mamulKodu}`);
+                const getJson = await getRes.json();
+
+                if (!getJson.success) {
+                    showToast("❌ Reçete bulunamadı", "danger");
+                    return;
+                }
+
+                const data = getJson.data;
+
+                // 2) SADECE YENİ KALEMİ POST EDİYORUZ
+                const payload = {
+                    PrmMamulKodu: mamulKodu,
+                    ReceteToplami: data.receteToplami,
+                    BOMItemList: [
+                        {
+                            OpNo: yeniKalem.opNo,
+                            Opr_Bil: yeniKalem.oprBil,
+                            Ham_Kodu: yeniKalem.hamKodu,
+                            Miktar: yeniKalem.miktar,
+                            SonOperasyon: true
+                        }
+                    ]
+                };
+
+                const createRes = await fetch(`/BOM/Create`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+
+                const createJson = await createRes.json();
+
+                if (!createJson.success) {
+                    showToast("❌ Hata: " + createJson.message, "danger");
+                    return;
+                }
+
+                // BAŞARILI
+                showToast(`✅ ${yeniKalem.hamKodu} reçeteye eklendi`, "success");
+
+                // Pivotu kapat → tekrar aç (refresh)
+                const pivot = document.getElementById(`pivot-${mamulKodu}`);
+                if (pivot) {
+                    pivot.classList.add("d-none");
+                    setTimeout(() => {
+                        document.querySelector(`.bom-row[data-id="${mamulKodu}"]`).click();
+                    }, 600);
+                }
+
+            } catch (err) {
+                console.error("❌ Kalem ekleme hatası:", err);
+                showToast("❌ Kalem eklenemedi", "danger");
+            }
+        }
+
+
+
+            // --- REÇETE TOPLAMI DÜZENLEME (BLUR) ---
+            document.addEventListener("blur", async e => {
+                const spanRecete = e.target.closest(".editable-recete-toplam");
+                if (spanRecete) {
+                    const mamulKodu = spanRecete.dataset.mamul;
+                    const originalValue = parseFloat(spanRecete.dataset.original);
+                    const newValue = parseFloat(spanRecete.textContent.trim()) || 0;
+
+                    if (newValue === originalValue) {
+                        return;
+                    }
+
+                    spanRecete.textContent = newValue.toFixed(3);
+
+                    const dto = {
+                        mamulKodu: mamulKodu,
+                        yeniReceteToplami: newValue
+                    };
+
+                    try {
+                        spanRecete.style.opacity = "0.5";
+                        spanRecete.style.pointerEvents = "none";
+
+                        const res = await fetch("/BOM/UpdateReceteToplami", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify(dto)
+                        });
+
+                        const json = await res.json();
+
+                        if (json.success) {
+                            spanRecete.style.backgroundColor = "#d4edda";
+                            spanRecete.dataset.original = newValue;
+                            showToast(`✅ ${mamulKodu} reçete toplamı güncellendi`, "success");
+                        } else {
+                            spanRecete.style.backgroundColor = "#f8d7da";
+                            spanRecete.textContent = originalValue.toFixed(3);
+                            showToast("❌ Hata: " + json.message, "danger");
+                        }
+
+                        setTimeout(() => {
+                            spanRecete.style.backgroundColor = "";
+                            spanRecete.style.opacity = "1";
+                            spanRecete.style.pointerEvents = "auto";
+                        }, 1500);
+
+                    } catch (err) {
+                        console.error("❌ Hata:", err);
+                        spanRecete.style.backgroundColor = "#f8d7da";
+                        spanRecete.textContent = originalValue.toFixed(3);
+                        spanRecete.style.opacity = "1";
+                        spanRecete.style.pointerEvents = "auto";
+                        setTimeout(() => spanRecete.style.backgroundColor = "", 1500);
+                        showToast("❌ Bağlantı hatası", "danger");
+                    }
+
+                    return;
+                }
+
+                const tdQty = e.target.closest(".editable-qty");
+                if (tdQty) {
+                    const tr = tdQty.closest(".kalem-row");
+                    const mamulKodu = tr.dataset.mamul;
+                    const hamKodu = tr.dataset.ham;
+                    const originalValue = parseFloat(tdQty.dataset.original);
+                    const newValue = parseFloat(tdQty.textContent.trim()) || 0;
+
+                    if (newValue === originalValue) {
+                        return;
+                    }
+
+                    tdQty.textContent = newValue.toFixed(3);
+
+                    const dto = {
+                        mamulKodu: mamulKodu,
+                        ham_Kodu: hamKodu,
+                        yeniMiktar: newValue
+                    };
+
+                    try {
+                        tdQty.style.opacity = "0.5";
+
+                        const res = await fetch("/BOM/UpdateQuantity", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify(dto)
+                        });
+
+                        const json = await res.json();
+
+                        if (json.success) {
+                            tdQty.style.backgroundColor = "#d4edda";
+                            tdQty.dataset.original = newValue;
+                            showToast(`✅ ${hamKodu} miktarı güncellendi`, "success");
+                        } else {
+                            tdQty.style.backgroundColor = "#f8d7da";
+                            tdQty.textContent = originalValue.toFixed(3);
+                            showToast("❌ Hata: " + json.message, "danger");
+                        }
+
+                        setTimeout(() => {
+                            tdQty.style.backgroundColor = "";
+                            tdQty.style.opacity = "1";
+                        }, 1500);
+
+                    } catch (err) {
+                        console.error("❌ Hata:", err);
+                        tdQty.style.backgroundColor = "#f8d7da";
+                        tdQty.textContent = originalValue.toFixed(3);
+                        tdQty.style.opacity = "1";
+                        setTimeout(() => tdQty.style.backgroundColor = "", 1500);
+                        showToast("❌ Bağlantı hatası", "danger");
+                    }
+                }
+
+            }, true);
+
+            // --- ENTER TUŞU İLE KAYDET ---
+            document.addEventListener("keydown", e => {
+                if (e.key === "Enter") {
+                    const editable = e.target.closest(".editable-recete-toplam, .editable-qty");
+                    if (editable) {
+                        e.preventDefault();
+                        editable.blur();
+                    }
+                }
+            });
+
+
+            function showToast(message, type = "success") {
+                const msgDiv = document.createElement("div");
+                msgDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed top-0 end-0 m-3`;
+                msgDiv.style.zIndex = "9999";
+                msgDiv.style.minWidth = "300px";
+                msgDiv.innerHTML = `
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                `;
+                document.body.appendChild(msgDiv);
+                setTimeout(() => msgDiv.remove(), 4000);
+            }
+
+        });
+    </script>
+
+    <style>
+        .editable-recete-toplam {
+            transition: all 0.3s;
+            border: 2px dashed #ffc107;
+            border-radius: 5px;
+        }
+
+            .editable-recete-toplam:hover {
+                background-color: #fff4a3 !important;
+                box-shadow: 0 0 10px rgba(255, 193, 7, 0.7);
+                transform: scale(1.08);
+                border-color: #ff9800;
+            }
+
+            .editable-recete-toplam:focus {
+                outline: none;
+                background-color: #fff !important;
+                border-color: #ff5722;
+                box-shadow: 0 0 15px rgba(255, 87, 34, 0.5);
+            }
+
+        .editable-qty {
+            background-color: #fffacd;
+            cursor: text;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+
+            .editable-qty:hover {
+                background-color: #fff4a3;
+                box-shadow: 0 0 5px rgba(255, 193, 7, 0.5);
+            }
+
+            .editable-qty:focus {
+                outline: 2px solid #ffc107;
+                background-color: #fff;
+            }
+
+        .bom-row:hover {
+            background-color: #f8f9fa;
+            cursor: pointer;
+        }
+
+        .pivot-row td {
+            background-color: #f8f9fa;
+            padding: 15px;
+        }
+
+        .table thead th {
+            position: sticky;
+            top: 0;
+            background-color: #f8f9fa;
+            z-index: 10;
+        }
+    </style>
+}

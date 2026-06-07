@@ -1,0 +1,200 @@
+﻿@{
+    ViewData["Title"] = "Yeni Ambar Çıkış Fişi";
+}
+
+<h2>Yeni Ambar Çıkış Fişi (docType = 9)</h2>
+
+<div class="card">
+    <div class="card-body">
+
+        <div class="row mb-3">
+            <div class="col-md-2">
+                <label class="form-label">Seri</label>
+                <input id="seri" class="form-control" placeholder="Örn: A" value="A" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Fiş No (FATIRS_NO)</label>
+                <input id="fisNo" class="form-control" placeholder="000000000000123" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Tarih (opsiyonel)</label>
+                <input id="tarih" class="form-control" placeholder="YYYY-MM-DD HH:MM:SS" />
+                <small class="text-muted">Boş bırakırsanız bugünün tarihi kullanılır</small>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Şube Kodu</label>
+                <input id="subeKodu" class="form-control" value="0" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Masraf Kodu (CariKod)</label>
+                <input id="cariKod" class="form-control" value="Üretim" />
+            </div>
+        </div>
+
+        <hr />
+
+        <h5>Kalemler</h5>
+
+        <table class="table table-sm table-bordered" id="kalemTable">
+            <thead class="table-light">
+                <tr>
+                    <th>Stok Kodu *</th>
+                    <th>Depo (DEPO_KODU) *</th>
+                    <th>Miktar (STra_GCMIK) *</th>
+                    <th>Birim Fiyat (STra_BF)</th>
+                    <th>Referans Kodu</th>
+                    <th style="width:40px;"></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><input class="form-control form-control-sm stokKodu" placeholder="Stok kodu" /></td>
+                    <td><input class="form-control form-control-sm depoKodu" value="11" /></td>
+                    <td><input class="form-control form-control-sm miktar" value="1" /></td>
+                    <td><input class="form-control form-control-sm bf" value="0" /></td>
+                    <td><input class="form-control form-control-sm referansKodu" value="1" /></td>
+                    <td class="text-center">
+                        <button type="button" class="btn btn-sm btn-danger btnRemoveLine">X</button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <button type="button" class="btn btn-sm btn-secondary mb-3" id="btnAddLine">+ Kalem Ekle</button>
+
+        <div class="mt-3">
+            <button type="button" class="btn btn-primary" id="btnSave">Fişi Oluştur</button>
+            <a href="@Url.Action("List", "AmbarCikis")" class="btn btn-outline-secondary">Listeye Dön</a>
+        </div>
+
+        <div id="resultArea" class="mt-3" style="display:none;">
+            <h5>API Yanıtı:</h5>
+            <pre id="resultJson" style="white-space:pre-wrap; background:#f5f5f5; padding:10px;"></pre>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // ==============================
+        //  Dinamik satır ekle / sil
+        // ==============================
+        document.getElementById("btnAddLine").addEventListener("click", function () {
+            let tbody = document.querySelector("#kalemTable tbody");
+            let tr = document.createElement("tr");
+            tr.innerHTML = `
+                <td><input class="form-control form-control-sm stokKodu" placeholder="Stok kodu" /></td>
+                <td><input class="form-control form-control-sm depoKodu" value="11" /></td>
+                <td><input class="form-control form-control-sm miktar" value="1" /></td>
+                <td><input class="form-control form-control-sm bf" value="0" /></td>
+                <td><input class="form-control form-control-sm referansKodu" value="1" /></td>
+                <td class="text-center">
+                    <button type="button" class="btn btn-sm btn-danger btnRemoveLine">X</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+            attachRemoveHandlers();
+        });
+
+        function attachRemoveHandlers() {
+            document.querySelectorAll(".btnRemoveLine").forEach(btn => {
+                btn.onclick = function () {
+                    let tbody = document.querySelector("#kalemTable tbody");
+                    if (tbody.querySelectorAll("tr").length > 1) {
+                        let tr = this.closest("tr");
+                        tr.parentNode.removeChild(tr);
+                    } else {
+                        alert("En az bir kalem satırı olmalıdır.");
+                    }
+                };
+            });
+        }
+        attachRemoveHandlers();
+
+        // ==============================
+        //  FİŞ OLUŞTUR (POST /AmbarCikis/Create)
+        // ==============================
+        document.getElementById("btnSave").addEventListener("click", function () {
+
+            let seri = document.getElementById("seri").value.trim();
+            let fisNo = document.getElementById("fisNo").value.trim();
+            let tarih = document.getElementById("tarih").value.trim();
+            let subeKodu = document.getElementById("subeKodu").value.trim();
+            let cariKod = document.getElementById("cariKod").value.trim();
+
+            if (!seri) {
+                alert("Seri boş olamaz.");
+                return;
+            }
+            if (!fisNo) {
+                alert("Fiş No boş olamaz.");
+                return;
+            }
+
+            let kalems = [];
+            document.querySelectorAll("#kalemTable tbody tr").forEach(tr => {
+                let stokKodu = tr.querySelector(".stokKodu").value.trim();
+                let depoKodu = tr.querySelector(".depoKodu").value.trim();
+                let miktar = tr.querySelector(".miktar").value.trim();
+                let bf = tr.querySelector(".bf").value.trim();
+                let referansKodu = tr.querySelector(".referansKodu").value.trim();
+
+                if (!stokKodu) return;
+
+                kalems.push({
+                    StokKodu: stokKodu,
+                    DEPO_KODU: depoKodu ? parseInt(depoKodu) : 0,
+                    STra_GCMIK: miktar ? parseFloat(miktar.replace(",", ".")) : 0,
+                    STra_BF: bf ? parseFloat(bf.replace(",", ".")) : 0,
+                    ReferansKodu: referansKodu || "1"
+                });
+            });
+
+            if (kalems.length === 0) {
+                alert("En az bir stok kalemi girmeniz gerekiyor.");
+                return;
+            }
+
+            let payload = {
+                FaturaTip: 9,                  // Ambar Çıkış
+                Seri: seri,
+                SonNumaraYazilsin: false,
+                FatUst: {
+                    FATIRS_NO: fisNo,
+                    Tarih: tarih || null,       // Controller bugünü basar
+                    Sube_Kodu: subeKodu ? parseInt(subeKodu) : 0,
+                    KDV_DAHILMI: true,
+                    AMBHARTUR: 2,
+                    CikisYeri: 3,
+                    CariKod: cariKod || "Üretim"
+                },
+                Kalems: kalems
+            };
+
+            console.log("Gönderilen payload:", payload);
+
+            fetch('/AmbarCikis/Create', {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            })
+                .then(r => r.json())
+                .then(res => {
+                    document.getElementById("resultArea").style.display = "block";
+                    document.getElementById("resultJson").textContent = JSON.stringify(res, null, 2);
+
+                    if (res.IsSuccessful === true) {
+                        alert("✅ Fiş başarıyla oluşturuldu! Fiş No: " + fisNo);
+                        // setTimeout(() => { window.location.href = '/AmbarCikis/List'; }, 1500);
+                    } else {
+                        alert("❌ Kayıt başarısız: " + (res.ErrorDesc || "Bilinmeyen hata"));
+                    }
+                })
+                .catch(err => {
+                    document.getElementById("resultArea").style.display = "block";
+                    document.getElementById("resultJson").textContent = "HATA: " + err;
+                    alert("Hata oluştu: " + err);
+                });
+        });
+    </script>
+}

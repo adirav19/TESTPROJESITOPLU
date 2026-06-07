@@ -1,12 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 
-namespace MinimalProject.Controllers
+namespace TESTPROJESI.Controllers
 {
     public class HomeController : Controller
     {
-        public IActionResult Index()
-        {
-            return View();
-        }
+        public IActionResult Index() => View();
     }
 }

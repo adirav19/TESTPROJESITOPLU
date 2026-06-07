@@ -1,0 +1,227 @@
+﻿@{
+    ViewData["Title"] = "Yeni Reçete Oluştur";
+}
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">🆕 Yeni Reçete Oluştur</h3>
+                </div>
+                <div class="card-body">
+
+                    <!-- ÜST BİLGİ -->
+                    <div class="border rounded p-3 mb-4 bg-light">
+                        <h5 class="mb-3">📋 Reçete Bilgileri</h5>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Mamul Kodu <span class="text-danger">*</span></label>
+                                <input type="text" id="mamulKodu" class="form-control" placeholder="Örn: MMLX3" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Reçete Toplamı <span class="text-danger">*</span></label>
+                                <input type="number" id="receteToplami" class="form-control" step="0.001" value="1" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- KALEMLER -->
+                    <div class="border rounded p-3 mb-3">
+                        <h5 class="mb-3">🔧 Reçete Kalemleri</h5>
+
+                        <div id="kalemlerContainer"></div>
+
+                        <button type="button" id="btnKalemEkle" class="btn btn-success btn-sm mt-2">
+                            ➕ Kalem Ekle
+                        </button>
+                    </div>
+
+                    <!-- BUTONLAR -->
+                    <div class="d-flex justify-content-between mt-4">
+                        <a href="/BOM/Index" class="btn btn-secondary">
+                            ⬅ Geri
+                        </a>
+                        <button type="button" id="btnKaydet" class="btn btn-primary btn-lg">
+                            💾 Reçete Oluştur
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        let kalemSayac = 0;
+
+        // Sayfa yüklenince ilk kalemi ekle
+        document.addEventListener("DOMContentLoaded", () => {
+            kalemEkle();
+        });
+
+        // Kalem ekle
+        document.getElementById("btnKalemEkle").addEventListener("click", () => {
+            kalemEkle();
+        });
+
+        function kalemEkle() {
+            kalemSayac++;
+            const opNo = String(kalemSayac).padStart(4, '0');
+
+            const html = `
+                <div class="kalem-row card mb-3 shadow-sm" data-id="${kalemSayac}">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="mb-0 text-primary">Kalem #${kalemSayac}</h6>
+                            <button type="button" class="btn btn-danger btn-sm btn-sil" data-id="${kalemSayac}">
+                                🗑️ Sil
+                            </button>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-3">
+                                <label class="form-label">Op No <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control kalem-opno" value="${opNo}" required>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Op Bilgi <span class="text-danger">*</span></label>
+                                <select class="form-select kalem-oprbil" required>
+                                    <option value="B">B - Bileşen</option>
+                                    <option value="O">O - Operasyon</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Ham Kodu <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control kalem-hamkodu" placeholder="Örn: HM1" required>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Miktar <span class="text-danger">*</span></label>
+                                <input type="number" class="form-control kalem-miktar" step="0.001" value="1" required>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById("kalemlerContainer").insertAdjacentHTML('beforeend', html);
+
+            // Sil butonuna event ekle
+            document.querySelector(`[data-id="${kalemSayac}"] .btn-sil`).addEventListener("click", function() {
+                kalemSil(this.dataset.id);
+            });
+        }
+
+        function kalemSil(id) {
+            const kalemRow = document.querySelector(`.kalem-row[data-id="${id}"]`);
+            if (kalemRow) {
+                kalemRow.remove();
+            }
+        }
+
+        // Kaydet
+        document.getElementById("btnKaydet").addEventListener("click", async () => {
+            const mamulKodu = document.getElementById("mamulKodu").value.trim();
+            const receteToplami = parseFloat(document.getElementById("receteToplami").value) || 0;
+
+            if (!mamulKodu) {
+                showToast("❌ Mamul kodu gerekli", "danger");
+                return;
+            }
+
+            if (receteToplami <= 0) {
+                showToast("❌ Reçete toplamı 0'dan büyük olmalı", "danger");
+                return;
+            }
+
+            // Kalemleri topla
+            const kalemler = [];
+            document.querySelectorAll(".kalem-row").forEach(row => {
+                const opNo = row.querySelector(".kalem-opno").value.trim();
+                const oprBil = row.querySelector(".kalem-oprbil").value;
+                const hamKodu = row.querySelector(".kalem-hamkodu").value.trim();
+                const miktar = parseFloat(row.querySelector(".kalem-miktar").value) || 0;
+
+                if (!opNo || !hamKodu || miktar <= 0) {
+                    showToast("❌ Tüm kalem alanları dolu ve miktar > 0 olmalı", "danger");
+                    return;
+                }
+
+                kalemler.push({
+                    opNo: opNo,
+                    opr_Bil: oprBil,
+                    ham_Kodu: hamKodu,
+                    miktar: miktar
+                });
+            });
+
+            if (kalemler.length === 0) {
+                showToast("❌ En az 1 kalem eklemelisiniz", "danger");
+                return;
+            }
+
+            const dto = {
+                prmMamulKodu: mamulKodu,
+                receteToplami: receteToplami,
+                bomItemList: kalemler
+            };
+
+            console.log("📤 POST Data:", dto);
+
+            try {
+                const btnKaydet = document.getElementById("btnKaydet");
+                btnKaydet.disabled = true;
+                btnKaydet.textContent = "⏳ Kaydediliyor...";
+
+                const res = await fetch("/BOM/Create", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(dto)
+                });
+
+                const json = await res.json();
+
+                if (json.success) {
+                    showToast("✅ Reçete başarıyla oluşturuldu!", "success");
+                    setTimeout(() => {
+                        window.location.href = "/BOM/Index";
+                    }, 1500);
+                } else {
+                    showToast("❌ Hata: " + json.message, "danger");
+                    btnKaydet.disabled = false;
+                    btnKaydet.textContent = "💾 Reçete Oluştur";
+                }
+
+            } catch (err) {
+                console.error("❌ Hata:", err);
+                showToast("❌ Bağlantı hatası", "danger");
+                btnKaydet.disabled = false;
+                btnKaydet.textContent = "💾 Reçete Oluştur";
+            }
+        });
+
+        function showToast(message, type = "success") {
+            const msgDiv = document.createElement("div");
+            msgDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed top-0 end-0 m-3`;
+            msgDiv.style.zIndex = "9999";
+            msgDiv.style.minWidth = "300px";
+            msgDiv.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            document.body.appendChild(msgDiv);
+            setTimeout(() => msgDiv.remove(), 4000);
+        }
+    </script>
+
+    <style>
+        .kalem-row {
+            border-left: 4px solid #0d6efd;
+        }
+
+            .kalem-row:hover {
+                background-color: #f8f9fa;
+            }
+    </style>
+}
